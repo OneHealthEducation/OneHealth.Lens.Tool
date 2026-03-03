@@ -1,25 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The One Health Lens - K-12 Educator Tool</title>
-  <meta name="description" content="A free interactive tool helping K-12 educators discover One Health connections across all subjects." />
-  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #FAFFFE; } #root { min-height: 100vh; }</style>
-</head>
-<body>
-  <div id="root"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+import { useState, useEffect, useRef } from "react";
+
+/* ═══════════════════════════════════
+   API CONFIGURATION
+   Change API_URL to your Cloudflare Worker URL for deployed version.
+   Leave as-is for use inside Claude artifacts.
+   ═══════════════════════════════════ */
+const API_URL = "https://api.anthropic.com/v1/messages";
+// For deployed version, change to your worker URL, e.g.:
+// const API_URL = "https://oh-lens-proxy.YOUR-SUBDOMAIN.workers.dev";
 
 /* ═══════════════════════════════════
    SUBJECT DEFINITIONS
    ═══════════════════════════════════ */
 const SUBJECTS = [
-  { id: "health", label: "Health / Science", emoji: "🔬", color: "#2D6A4F", desc: "Kahn Matrix: OH Factors, Complexity, PSE, Time" },
+  { id: "health", label: "Health / Science", emoji: "🔬", color: "#2D6A4F", desc: "Kahn Matrix: OH Factors, Complexity, Political/Social/Economic, Time" },
   { id: "math", label: "Mathematics", emoji: "📐", color: "#B45309", desc: "Data Lens: Measure, Patterns, Compare, Predict" },
   { id: "ela", label: "English Language Arts", emoji: "📝", color: "#7C3AED", desc: "Narrative Lens: Stories, Arguments, Literacy, Communication" },
   { id: "ss", label: "Social Studies", emoji: "🏛️", color: "#1E40AF", desc: "Systems Lens: Determinants, Policy, History, Equity" },
@@ -500,34 +494,239 @@ function StdToggle({ item, selected, toggle, color }) {
 /* ═══════════════════════════════════
    MAIN APP
    ═══════════════════════════════════ */
-function App() {
+export default function App() {
+  const [showWelcome, setShowWelcome] = useState(true);
   const [subj, setSubj] = useState("");
   const [grade, setGrade] = useState("68");
   const [topic, setTopic] = useState("");
   const [subjArea, setSubjArea] = useState("");
   const [step, setStep] = useState(0); // 0=setup, 1-N=dims, N+1=results
   const [dimData, setDimData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [resources, setResources] = useState(null);
+  const [loadingRes, setLoadingRes] = useState(false);
+  const [lessonPlan, setLessonPlan] = useState(null);
+  const [loadingLP, setLoadingLP] = useState(false);
   const ref = useRef(null);
 
-  useEffect(() => { ref.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [step]);
+  useEffect(() => { ref.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [step, showWelcome]);
 
   const dims = DIMS[subj] || [];
   const subjColor = SUBJECTS.find((s) => s.id === subj)?.color || "#2D6A4F";
   const gradeLabel = GRADES.find((g) => g.id === grade)?.label || grade;
 
-  const changeSubj = (id) => { setSubj(id); setDimData({}); setStep(0); };
-  const changeTopic = (t) => { setTopic(t); setDimData({}); };
+  const changeSubj = (id) => { setSubj(id); setDimData({}); setAiError(""); setResources(null); setLessonPlan(null); };
+  const changeTopic = (t) => { setTopic(t); setDimData({}); setAiError(""); setResources(null); setLessonPlan(null); };
 
   const updateDim = (dimId, itemId, val) => setDimData((p) => ({ ...p, [dimId]: { ...(p[dimId] || {}), [itemId]: val } }));
+
+  const generateConnections = async () => {
+    setLoading(true);
+    setAiError("");
+    const currentDims = DIMS[subj] || [];
+    const gradeText = GRADES.find((g) => g.id === grade)?.label || grade;
+    const subjLabel = SUBJECTS.find((s) => s.id === subj)?.label || subj;
+
+    // Build a structure description for the AI
+    const dimDescription = currentDims.map((dim) => ({
+      dimId: dim.id,
+      dimTitle: dim.title,
+      items: dim.items.map((it) => ({ itemId: it.id, itemLabel: it.label }))
+    }));
+
+    const prompt = `You are a One Health education expert helping a ${subjLabel} teacher (grades ${gradeText}) find One Health connections in their lesson topic: "${topic}".
+
+One Health recognizes that the health of people, animals, plants, environments, and ecosystems are all connected and interdependent.
+
+For each dimension and item below, write a brief suggested connection (2-3 sentences) explaining how the teacher's topic "${topic}" relates to that aspect through a One Health lens. Be specific, practical, and grade-appropriate for ${gradeText}. If a particular item genuinely does not connect to this topic, write "No clear connection for this topic." but try hard to find connections — most topics connect in surprising ways.
+
+Write ONLY valid JSON — no markdown, no backticks, no preamble. Return an object where keys are dimension IDs, and values are objects where keys are item IDs and values are the suggested connection text.
+
+Dimensions and items:
+${JSON.stringify(dimDescription, null, 2)}
+
+Return format example:
+{"dimension_id": {"item_id": "Your suggested connection text here..."}}`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content?.map((c) => c.text || "").join("") || "";
+      const clean = text.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+      setDimData(parsed);
+      setStep(1);
+    } catch (err) {
+      console.error("AI generation error:", err);
+      setAiError("Couldn't generate suggestions — you can still use the tool manually.");
+      setStep(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateResources = async () => {
+    setLoadingRes(true);
+    const gradeText = GRADES.find((g) => g.id === grade)?.label || grade;
+    const subjLabel = SUBJECTS.find((s) => s.id === subj)?.label || subj;
+
+    // Summarize the connections found
+    const connectionSummary = Object.entries(dimData).map(([dimId, items]) => {
+      const dim = dims.find((d) => d.id === dimId);
+      const filled = Object.entries(items).filter(([_, v]) => v?.trim());
+      if (!filled.length) return null;
+      return `${dim?.title || dimId}: ${filled.map(([iid, v]) => v).join("; ")}`;
+    }).filter(Boolean).join("\n");
+
+    const prompt = `You are a One Health education resource specialist. A ${subjLabel} teacher (grades ${gradeText}) has been exploring One Health connections in their lesson topic: "${topic}".
+
+Here are the connections they found:
+${connectionSummary}
+
+Find and recommend specific, real, reliable teaching resources that this teacher could use to bring these One Health connections into their ${gradeText} classroom. Search for current, accessible resources.
+
+IMPORTANT: Only recommend resources that actually exist. Use web search to verify. Prioritize:
+- Government sources (CDC, EPA, USDA, WHO, WOAH, FAO)
+- University extension programs
+- Established education platforms (PBS LearningMedia, National Geographic Education, etc.)
+- Real published books (picture books for K-2, novels/nonfiction for older grades)
+- Free or low-cost classroom materials
+
+Return ONLY valid JSON with no markdown or backticks. Use this exact structure:
+{
+  "data_sources": [{"title": "...", "url": "...", "description": "...", "grades": "..."}],
+  "case_studies": [{"title": "...", "url": "...", "description": "...", "grades": "..."}],
+  "books": [{"title": "...", "author": "...", "description": "...", "grades": "...", "type": "picture book|novel|nonfiction"}],
+  "lesson_materials": [{"title": "...", "url": "...", "description": "...", "grades": "..."}],
+  "multimedia": [{"title": "...", "url": "...", "description": "...", "grades": "...", "type": "video|interactive|podcast"}]
+}
+
+Include 2-4 items per category. Every item must be real and verifiable. If a URL is not available, omit the url field.`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content?.filter((c) => c.type === "text").map((c) => c.text || "").join("") || "";
+      const clean = text.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+      setResources(parsed);
+    } catch (err) {
+      console.error("Resource generation error:", err);
+      setResources({ error: "Couldn't find resources right now. Try again in a moment." });
+    } finally {
+      setLoadingRes(false);
+    }
+  };
+
+  const generateLessonPlan = async () => {
+    setLoadingLP(true);
+    const gradeText = GRADES.find((g) => g.id === grade)?.label || grade;
+    const subjLabel = SUBJECTS.find((s) => s.id === subj)?.label || subj;
+
+    // Summarize connections
+    const connectionSummary = Object.entries(dimData).map(([dimId, items]) => {
+      const dim = dims.find((d) => d.id === dimId);
+      const filled = Object.entries(items).filter(([_, v]) => v?.trim());
+      if (!filled.length) return null;
+      return `${dim?.title || dimId}:\n${filled.map(([iid, v]) => `  - ${v}`).join("\n")}`;
+    }).filter(Boolean).join("\n\n");
+
+    // Summarize resources
+    const resSummary = resources ? Object.entries(resources).map(([cat, items]) => {
+      if (!Array.isArray(items) || !items.length) return null;
+      return `${cat}: ${items.map((r) => `${r.title}${r.url ? " (" + r.url + ")" : ""}${r.author ? " by " + r.author : ""}`).join("; ")}`;
+    }).filter(Boolean).join("\n") : "No resources loaded yet.";
+
+    const prompt = `You are an expert health educator with deep knowledge of One Health and K-12 pedagogy. Create a detailed, ready-to-teach lesson plan for a ${subjLabel} teacher (grades ${gradeText}) that integrates One Health framed Health Education connections into their existing lesson on "${topic}".
+
+CONTEXT — The teacher used the One Health Lens tool and found these connections:
+${connectionSummary}
+
+AVAILABLE RESOURCES:
+${resSummary}
+
+Create a lesson plan that:
+1. Keeps the original ${subjLabel} content and standards as the foundation
+2. Weaves in One Health framed Health Education connections naturally — students should see how ${topic} relates to human, animal, plant, environment, and ecosystem health
+3. Incorporates the specific resources listed above where appropriate
+4. Is practical and ready to teach — include specific activities, discussion questions, and timing
+5. Names One Health explicitly so students learn the concept
+
+Return ONLY valid JSON with no markdown or backticks:
+{
+  "title": "Lesson title",
+  "overview": "2-3 sentence overview of the lesson",
+  "grade_band": "${gradeText}",
+  "subject": "${subjLabel}",
+  "duration": "Estimated time (e.g., '2 class periods, 45 min each')",
+  "objectives": ["Learning objective 1", "Learning objective 2", "..."],
+  "oh_objectives": ["One Health learning objective 1", "..."],
+  "materials": ["Material or resource 1 (with URL if available)", "..."],
+  "sections": [
+    {
+      "title": "Section title (e.g., 'Opening Hook', 'Core Activity', 'OH Connection')",
+      "duration": "10 min",
+      "activity": "Detailed description of what teacher and students do",
+      "oh_connection": "How this section connects to One Health (or null if it's pure content setup)"
+    }
+  ],
+  "assessment": "How to assess student understanding of both content and OH connections",
+  "extensions": ["Optional extension activity 1", "..."],
+  "teacher_notes": "Tips for the teacher, including how to introduce One Health if students haven't encountered it before"
+}`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content?.filter((c) => c.type === "text").map((c) => c.text || "").join("") || "";
+      const clean = text.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+      setLessonPlan(parsed);
+    } catch (err) {
+      console.error("Lesson plan generation error:", err);
+      setLessonPlan({ error: "Couldn't generate the lesson plan right now. Try again in a moment." });
+    } finally {
+      setLoadingLP(false);
+    }
+  };
 
   const loadSample = (id) => {
     const s = SAMPLES[id];
     setSubj(id); setTopic(s.topic); setGrade(s.grade); setSubjArea(s.subject);
     const d = {}; Object.entries(s.data).forEach(([dk, dv]) => { d[dk] = dv; });
-    setDimData(d); setStep((DIMS[id] || []).length + 1);
+    setDimData(d); setStep((DIMS[id] || []).length + 1); setShowWelcome(false);
   };
 
-  const reset = () => { setSubj(""); setGrade("68"); setTopic(""); setSubjArea(""); setStep(0); setDimData({}); };
+  const reset = () => { setSubj(""); setGrade("68"); setTopic(""); setSubjArea(""); setStep(0); setDimData({}); setShowWelcome(true); setResources(null); setLessonPlan(null); };
   const canNext = step === 0 ? (subj && topic.trim()) : true;
 
   const filledCount = Object.values(dimData).reduce((t, d) => t + Object.values(d).filter((v) => v?.trim()).length, 0);
@@ -543,6 +742,7 @@ function App() {
       {/* HEADER */}
       <div style={{ background: `linear-gradient(145deg, #0F2A1D, ${subjColor || "#1B4332"}, ${subjColor || "#2D6A4F"}88)`, padding: "24px 26px 20px", color: "white", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -25, right: -15, fontSize: 110, opacity: 0.06, transform: "rotate(12deg)" }}>🔎</div>
+        {!showWelcome && <button onClick={() => { reset(); }} style={{ position: "absolute", top: 14, right: 16, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, color: "white", padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", fontWeight: 600, zIndex: 2 }}>? Help</button>}
         <div style={{ position: "relative" }}>
           <h1 style={{ fontFamily: "'Libre Baskerville', Georgia, serif", fontSize: 21, fontWeight: 700, margin: 0 }}>The One Health Lens</h1>
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>K-12 Educator Tool · All Subjects · Track 2: Enhancing What You Already Teach</div>
@@ -553,17 +753,90 @@ function App() {
       </div>
 
       {/* STEP DOTS */}
-      <div style={{ display: "flex", gap: 4, justifyContent: "center", padding: "14px 20px 0" }}>
+      {!showWelcome && <div style={{ display: "flex", gap: 4, justifyContent: "center", padding: "14px 20px 0" }}>
         {Array.from({ length: totalSteps }).map((_, i) => (
           <div key={i} onClick={() => i <= step ? setStep(i) : null} style={{ width: i === step ? 24 : 9, height: 9, borderRadius: 5, background: i <= step ? subjColor : "#DDE5DB", transition: "all 0.3s", cursor: i <= step ? "pointer" : "default" }} />
         ))}
-      </div>
+      </div>}
 
       {/* CONTENT */}
       <div ref={ref} style={{ padding: "18px 22px 110px" }}>
 
+        {/* WELCOME / GUIDE */}
+        {showWelcome && (
+          <div>
+            <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 22, color: "#1B3A2A", marginBottom: 6 }}>Welcome!</h2>
+            <p style={{ fontSize: 14, color: "#3D5A4C", lineHeight: 1.6, marginBottom: 18 }}>
+              This free tool helps you find <strong>One Health connections</strong> in lessons you're already teaching. One Health is the idea that the health of people, animals, plants, environments, and ecosystems are all connected and interdependent. You don't need to be a health teacher to use this — the tool works for <strong>any subject</strong>.
+            </p>
+
+            <div style={{ background: "#F0F7F2", border: "1.5px solid #B7E4C7", borderRadius: 12, padding: "16px 18px", marginBottom: 18 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#2D6A4F", marginBottom: 8 }}>Why This Matters for Your Students</h3>
+              <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
+                Your students face health challenges that cross every boundary — climate change, emerging diseases, food safety, mental health, environmental justice. But most students only encounter health education in a single class, if they get one at all. That means the connections between health and the rest of their world go unspoken for most of the school day.
+              </p>
+              <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
+                You might not think what you're teaching relates to health — but it could. When a math student calculates disease outbreak rates, they're building health literacy. When an art student illustrates how pollution moves through a food web, they're seeing systems. When a social studies student traces how policy decisions shape health outcomes for people <em>and</em> animals, they're thinking like a One Health professional.
+              </p>
+              <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
+                The One Health Lens helps you find these opportunities in content you're already teaching — so your students build health literacy <strong>across the school day</strong>, not just in a single class. Every teacher who uses this tool gives their students one more chance to see how health connects to the world around them.
+              </p>
+              <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
+                Because no teacher is expected to be an expert in every field, this tool uses <strong>AI to bridge the gap</strong> — generating suggested connections, finding grade-appropriate teaching resources, and even building lesson plans so you can focus on what you do best: teaching your students.
+              </p>
+              <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: 0 }}>
+                Think of any topic as a Rubik's cube (Kahn, 2021). Each face represents a different dimension of the same issue. A science teacher examines human, animal, and environmental health factors. A math teacher examines data patterns and predictions. An art teacher examines what we can observe, express, and communicate. <strong>Different angles, same interconnected issue — and your students benefit from every rotation.</strong>
+              </p>
+            </div>
+
+            <div style={{ background: "white", border: "1.5px solid #D0DDD5", borderRadius: 12, padding: "16px 18px", marginBottom: 18 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#2D6A4F", marginBottom: 10 }}>How It Works</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { num: "1", text: "Pick your subject area, grade level, and a topic you're already teaching." },
+                  { num: "2", text: "Click \"Generate Connections\" — the tool uses AI to analyze your topic and suggest One Health connections for each dimension, matched to your grade level." },
+                  { num: "3", text: "Review the suggestions. Tap each card to see the AI-generated connection alongside guiding questions. Edit, refine, or replace any suggestion with your own thinking — your expertise makes them better." },
+                  { num: "4", text: "View your Lesson Map showing all the One Health connections, plus tips for turning them into teaching moments your students will remember." },
+                  { num: "5", text: "Click \"Find Teaching Resources\" to get AI-curated books, data sources, case studies, lesson materials, and videos — all matched to your topic and grade level." },
+                  { num: "6", text: "Click \"Generate a Lesson Plan\" to get a complete, ready-to-teach plan that integrates One Health framed Health Education into your existing content — with your curated resources woven in." },
+                ].map((s) => (
+                  <div key={s.num} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ background: "#2D6A4F", color: "white", width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{s.num}</span>
+                    <span style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.5 }}>{s.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ background: "#FFFBEB", border: "1.5px solid #FDE68A", borderRadius: 12, padding: "14px 16px", marginBottom: 18 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#78350F", marginBottom: 6 }}>What You'll Need</h3>
+              <p style={{ fontSize: 13, color: "#78350F", lineHeight: 1.5, margin: 0 }}>Just a topic or lesson you're currently teaching. That's it! The tool provides all the guiding questions. Your lesson's standards don't change — you're helping to deepen their learning and connect it to the real world through a One Health lens.</p>
+            </div>
+
+            <div style={{ background: "#F0F4FF", border: "1.5px solid #C7D2FE", borderRadius: 12, padding: "14px 16px", marginBottom: 18 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1E40AF", marginBottom: 6 }}>Want to See an Example First?</h3>
+              <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.5, marginBottom: 10 }}>Each subject has a pre-filled sample walkthrough so you can see what a completed analysis looks like before starting your own.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                {Object.entries(SAMPLES).map(([k, v]) => {
+                  const s = SUBJECTS.find((x) => x.id === k);
+                  return (
+                    <button key={k} onClick={() => loadSample(k)} style={{ padding: "8px 8px", fontSize: 11, border: "2px dashed #B7E4C7", borderRadius: 8, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", textAlign: "left", lineHeight: 1.3 }}>
+                      <span style={{ fontSize: 14 }}>{s?.emoji}</span> <strong>{v.topic}</strong>
+                      <div style={{ fontSize: 9, color: "#6B7C74", marginTop: 1 }}>{s?.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button onClick={() => setShowWelcome(false)} style={{ width: "100%", padding: "14px", fontSize: 15, fontWeight: 700, border: "none", borderRadius: 10, background: "linear-gradient(135deg, #1B4332, #2D6A4F)", color: "white", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif" }}>
+              Get Started →
+            </button>
+          </div>
+        )}
+
         {/* STEP 0: SETUP */}
-        {step === 0 && (
+        {!showWelcome && step === 0 && !loading && (
           <div>
             <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 22, color: "#1B3A2A", marginBottom: 6 }}>Choose Your Subject & Topic</h2>
             <div style={{ background: "#F0F7F2", border: "1.5px solid #B7E4C7", borderRadius: 12, padding: "14px 16px", marginBottom: 20, fontSize: 12, color: "#3D5A4C", lineHeight: 1.5 }}>
@@ -608,15 +881,32 @@ function App() {
           </div>
         )}
 
+        {/* LOADING */}
+        {loading && (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <div style={{ fontSize: 48, marginBottom: 16, animation: "pulse 1.5s ease-in-out infinite" }}>🔎</div>
+            <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 20, color: "#1B3A2A", marginBottom: 8 }}>Finding One Health Connections...</h2>
+            <p style={{ fontSize: 14, color: "#4A6B5A", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
+              Analyzing how <strong>"{topic}"</strong> connects to human, animal, plant, environment, and ecosystem health for <strong>{gradeLabel}</strong> students.
+            </p>
+            <p style={{ fontSize: 12, color: "#8A9B90", marginTop: 12 }}>This usually takes 10–15 seconds.</p>
+            <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }`}</style>
+          </div>
+        )}
+
         {/* DIMENSION STEPS */}
-        {step >= 1 && step <= dims.length && (() => {
+        {!loading && step >= 1 && step <= dims.length && (() => {
           const dim = dims[step - 1];
           return (
             <div key={dim.id}>
               <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 21, color: "#1B3A2A", marginBottom: 4 }}>{dim.icon} {dim.title}</h2>
-              <p style={{ fontSize: 13, color: "#4A6B5A", marginBottom: 16, lineHeight: 1.5 }}>
+              <p style={{ fontSize: 13, color: "#4A6B5A", marginBottom: 10, lineHeight: 1.5 }}>
                 Explore how <strong>"{topic}"</strong> connects through this lens. Expand each card for grade-appropriate prompts ({gradeLabel}).
               </p>
+              {aiError && <div style={{ fontSize: 11, color: "#B45309", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.4 }}>{aiError}</div>}
+              <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, lineHeight: 1.45 }}>
+                <strong>Tip:</strong> AI-generated suggestions have been filled in below. Tap any card to review, edit, or replace the suggestions with your own thinking. These are starting points — your expertise makes them better.
+              </div>
               {dim.items.map((item) => (
                 <Card key={item.id} item={item} grade={grade} value={dimData[dim.id]?.[item.id] || ""} onChange={(iid, val) => updateDim(dim.id, iid, val)} accent={subjColor} />
               ))}
@@ -672,7 +962,7 @@ function App() {
               <div style={{ padding: "14px 16px", background: "#F0F4FF", border: "1.5px solid #C7D2FE", borderRadius: 10, marginBottom: 16 }}>
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1E40AF", marginBottom: 6 }}>📋 About Your Lesson Standards</h3>
                 <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>
-                  Your original lesson standards remain fully addressed — the One Health Lens doesn't change what you teach, it helps your students <strong>make cross-curricular connections to health</strong> within the content they're already learning. When students see how health connects to math, art, social studies, science, ELA, or STEM, they build health literacy across the school day — without needing a separate health class to do it.
+                  Your original lesson standards remain fully addressed — the One Health Lens doesn't change what you teach, it helps your students <strong>make cross-curricular connections to health</strong> within the content they're already learning. When students see how health connects to math, art, social studies, science, ELA, or STEM, they build health literacy across the school day — reinforcing and extending what students learn in health class into every part of their education.
                 </p>
               </div>
 
@@ -707,11 +997,226 @@ function App() {
                   </> : <>
                     <p style={{margin:"0 0 6px"}}><strong>1.</strong> Open with two seemingly unrelated connections. Challenge students: "What do these have to do with each other?"</p>
                     <p style={{margin:"0 0 6px"}}><strong>2.</strong> Pick one OH Factor + one Complexity Level as your core frame. Use others to deepen.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Make it local using your PSE notes. What policies or realities make this relevant to your students?</p>
+                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Make it local using your Political, Social &amp; Economic notes. What policies or realities make this relevant to your students?</p>
                     <p style={{margin:0}}><strong>4.</strong> Name it: "You just analyzed a topic the way scientists and policymakers do — that's <em>One Health</em>."</p>
                   </>}
                 </div>
               </div>
+
+              {/* RESOURCES */}
+              {!resources && !loadingRes && (
+                <button onClick={generateResources} style={{ width: "100%", padding: "14px", fontSize: 14, fontWeight: 700, border: "2px dashed #B7E4C7", borderRadius: 10, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", marginBottom: 14 }}>
+                  📚 Find Teaching Resources for This Lesson
+                </button>
+              )}
+
+              {loadingRes && (
+                <div style={{ textAlign: "center", padding: "20px", background: "#F0FFF4", borderRadius: 10, border: "1.5px solid #B7E4C7", marginBottom: 14 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}>📚</div>
+                  <p style={{ fontSize: 13, color: "#2D6A4F", fontWeight: 600, margin: 0 }}>Searching for teaching resources...</p>
+                  <p style={{ fontSize: 11, color: "#6B7C74", margin: "4px 0 0" }}>Finding books, data sources, case studies, and lesson materials for "{topic}"</p>
+                </div>
+              )}
+
+              {resources && !resources.error && (
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 16, color: "#1B3A2A", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>📚 Teaching Resources
+                    <button onClick={() => { setResources(null); setLessonPlan(null); generateResources(); }} style={{ fontSize: 10, padding: "4px 10px", border: "1px solid #B7E4C7", borderRadius: 6, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif" }}>🔄 Regenerate</button>
+                  </h3>
+                  <p style={{ fontSize: 12, color: "#6B7C74", marginBottom: 14, lineHeight: 1.5 }}>AI-curated resources for teaching One Health connections in "{topic}" ({gradeLabel}). Always verify links and preview materials before classroom use.</p>
+
+                  {resources.books?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>📖 Books &amp; Literature</h4>
+                      {resources.books.map((b, i) => (
+                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{b.title}</div>
+                          {b.author && <div style={{ fontSize: 11, color: "#6B7C74" }}>by {b.author} · {b.type}</div>}
+                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{b.description}</div>
+                          {b.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{b.grades}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resources.data_sources?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>📊 Data Sources</h4>
+                      {resources.data_sources.map((r, i) => (
+                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
+                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
+                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resources.case_studies?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>🔬 Case Studies</h4>
+                      {resources.case_studies.map((r, i) => (
+                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
+                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
+                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resources.lesson_materials?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>🎓 Lesson Materials</h4>
+                      {resources.lesson_materials.map((r, i) => (
+                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
+                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
+                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resources.multimedia?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>🎬 Videos &amp; Multimedia</h4>
+                      {resources.multimedia.map((r, i) => (
+                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
+                          {r.type && <span style={{ fontSize: 10, color: "#6B7C74", fontStyle: "italic" }}>{r.type}</span>}
+                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
+                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {resources?.error && (
+                <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F" }}>
+                  {resources.error}
+                  <button onClick={generateResources} style={{ marginLeft: 8, padding: "3px 10px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
+                </div>
+              )}
+
+              {/* LESSON PLAN */}
+              {resources && !resources.error && !lessonPlan && !loadingLP && (<>
+                <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.45 }}>
+                  <strong>💡 Want to fine-tune?</strong> Use the <strong>← Back</strong> button to revisit and edit your connections. The resources and lesson plan are built from what you entered — so refining your connections will improve everything that follows.
+                </div>
+                <button onClick={generateLessonPlan} style={{ width: "100%", padding: "14px", fontSize: 14, fontWeight: 700, border: "none", borderRadius: 10, background: "linear-gradient(135deg, #1B4332, #2D6A4F)", color: "white", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", marginBottom: 14 }}>
+                  📝 Generate a Lesson Plan with One Health Connections
+                </button>
+              </>)}
+
+              {loadingLP && (
+                <div style={{ textAlign: "center", padding: "20px", background: "#F0F7F2", borderRadius: 10, border: "1.5px solid #B7E4C7", marginBottom: 14 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}>📝</div>
+                  <p style={{ fontSize: 13, color: "#2D6A4F", fontWeight: 600, margin: 0 }}>Building your lesson plan...</p>
+                  <p style={{ fontSize: 11, color: "#6B7C74", margin: "4px 0 0" }}>Integrating One Health connections and your curated resources into a ready-to-teach plan</p>
+                </div>
+              )}
+
+              {lessonPlan && !lessonPlan.error && (
+                <div style={{ marginBottom: 14, border: "2px solid #2D6A4F", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: "linear-gradient(135deg, #1B4332, #2D6A4F)", padding: "16px 18px", color: "white" }}>
+                    <h3 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 17, margin: "0 0 4px" }}>📝 {lessonPlan.title}</h3>
+                    <div style={{ fontSize: 12, opacity: 0.8 }}>{lessonPlan.subject} · {lessonPlan.grade_band} · {lessonPlan.duration}</div>
+                  </div>
+                  <div style={{ padding: "16px 18px" }}>
+                    <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, marginBottom: 14 }}>{lessonPlan.overview}</p>
+
+                    {lessonPlan.objectives?.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#1E40AF", textTransform: "uppercase", marginBottom: 6 }}>Content Objectives</h4>
+                        {lessonPlan.objectives.map((o, i) => (
+                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "3px 0 3px 14px", borderLeft: "3px solid #C7D2FE" }}>{o}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {lessonPlan.oh_objectives?.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", marginBottom: 6 }}>🌍 One Health Objectives</h4>
+                        {lessonPlan.oh_objectives.map((o, i) => (
+                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "3px 0 3px 14px", borderLeft: "3px solid #B7E4C7" }}>{o}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {lessonPlan.materials?.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Materials Needed</h4>
+                        {lessonPlan.materials.map((m, i) => (
+                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "2px 0" }}>• {m}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {lessonPlan.sections?.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 8 }}>Lesson Flow</h4>
+                        {lessonPlan.sections.map((sec, i) => (
+                          <div key={i} style={{ marginBottom: 10, border: "1px solid #E5EDE8", borderRadius: 8, overflow: "hidden" }}>
+                            <div style={{ background: "#F8FAF9", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{sec.title}</span>
+                              <span style={{ fontSize: 11, color: "#6B7C74", fontWeight: 600 }}>{sec.duration}</span>
+                            </div>
+                            <div style={{ padding: "10px 12px" }}>
+                              <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>{sec.activity}</p>
+                              {sec.oh_connection && (
+                                <div style={{ marginTop: 8, padding: "6px 10px", background: "#F0FFF4", borderRadius: 6, borderLeft: "3px solid #2D6A4F" }}>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase" }}>🌍 OH Connection: </span>
+                                  <span style={{ fontSize: 11, color: "#3D5A4C", lineHeight: 1.4 }}>{sec.oh_connection}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {lessonPlan.assessment && (
+                      <div style={{ marginBottom: 14 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Assessment</h4>
+                        <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>{lessonPlan.assessment}</p>
+                      </div>
+                    )}
+
+                    {lessonPlan.extensions?.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Extensions</h4>
+                        {lessonPlan.extensions.map((e, i) => (
+                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "2px 0" }}>• {e}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {lessonPlan.teacher_notes && (
+                      <div style={{ padding: "10px 12px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8 }}>
+                        <h4 style={{ fontSize: 11, fontWeight: 700, color: "#78350F", textTransform: "uppercase", marginBottom: 4 }}>💡 Teacher Notes</h4>
+                        <p style={{ fontSize: 12, color: "#78350F", lineHeight: 1.5, margin: 0 }}>{lessonPlan.teacher_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {lessonPlan && !lessonPlan.error && (
+                <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, lineHeight: 1.45, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <span><strong>💡 Not quite right?</strong> Use the <strong>← Back</strong> button to edit your One Health connections, then return here to regenerate. The more specific your connections, the more tailored your lesson plan will be.</span>
+                  <button onClick={() => { setLessonPlan(null); generateLessonPlan(); }} style={{ fontSize: 10, padding: "4px 10px", border: "1px solid #B7E4C7", borderRadius: 6, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif", flexShrink: 0 }}>🔄 Regenerate Lesson Plan</button>
+                </div>
+              )}
+
+              {lessonPlan?.error && (
+                <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F" }}>
+                  {lessonPlan.error}
+                  <button onClick={generateLessonPlan} style={{ marginLeft: 8, padding: "3px 10px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
+                </div>
+              )}
 
               <div style={{ padding: 12, background: "#FFFBE6", borderRadius: 9, border: "1px solid #FDE68A", fontSize: 10, color: "#78350F", lineHeight: 1.4 }}>
                 <strong>Citation:</strong> Health/Science lens adapted from Kahn, L.H. (2021). "Developing a One Health Approach by Using a Multi-Dimensional Matrix." <em>One Health</em>, 13, 100289. Cross-curricular lenses (Math, ELA, Social Studies, STEM, Art) developed for K-12 educators as part of the One Health Framework for K-12 School Health Systems (LeBoeuf, et al.).
@@ -722,22 +1227,16 @@ function App() {
       </div>
 
       {/* NAV */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #D0DDD5", padding: "9px 22px", display: "flex", justifyContent: "space-between", maxWidth: 700, margin: "0 auto", boxSizing: "border-box", zIndex: 100 }}>
+      {!showWelcome && !loading && <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #D0DDD5", padding: "9px 22px", display: "flex", justifyContent: "space-between", maxWidth: 700, margin: "0 auto", boxSizing: "border-box", zIndex: 100 }}>
         {step > 0 ? <button onClick={() => setStep(step - 1)} style={{ padding: "8px 16px", fontSize: 12, fontWeight: 600, border: "1.5px solid #D0DDD5", borderRadius: 7, background: "white", color: "#2D6A4F", cursor: "pointer" }}>← Back</button> : <div />}
         {step < dims.length + 1 ? (
-          <button onClick={() => canNext && setStep(step + 1)} disabled={!canNext} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, border: "none", borderRadius: 7, background: canNext ? `linear-gradient(135deg, #1B4332, ${subjColor})` : "#DDD", color: canNext ? "white" : "#999", cursor: canNext ? "pointer" : "not-allowed" }}>
-            {step === 0 ? "Start Analysis →" : step === dims.length ? "View Lesson Map →" : "Next →"}
+          <button onClick={() => { if (!canNext) return; if (step === 0) { generateConnections(); } else { setStep(step + 1); } }} disabled={!canNext} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, border: "none", borderRadius: 7, background: canNext ? `linear-gradient(135deg, #1B4332, ${subjColor})` : "#DDD", color: canNext ? "white" : "#999", cursor: canNext ? "pointer" : "not-allowed" }}>
+            {step === 0 ? "Generate Connections →" : step === dims.length ? "View Lesson Map →" : "Next →"}
           </button>
         ) : (
           <button onClick={reset} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, border: "none", borderRadius: 7, background: `linear-gradient(135deg, #1B4332, ${subjColor})`, color: "white", cursor: "pointer" }}>🔄 New Analysis</button>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
-  </script>
-</body>
-</html>

@@ -1,4 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The One Health Lens - K-12 Educator Tool</title>
+  <meta name="description" content="A free interactive tool helping K-12 educators discover One Health connections across all subjects." />
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #FAFFFE; } #root { min-height: 100vh; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
 /* ═══════════════════════════════════
    API CONFIGURATION
@@ -494,7 +510,7 @@ function StdToggle({ item, selected, toggle, color }) {
 /* ═══════════════════════════════════
    MAIN APP
    ═══════════════════════════════════ */
-export default function App() {
+function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [subj, setSubj] = useState("");
   const [grade, setGrade] = useState("68");
@@ -1240,3 +1256,9 @@ Return ONLY valid JSON with no markdown or backticks:
     </div>
   );
 }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>

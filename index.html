@@ -515,6 +515,9 @@ function App() {
   const subjColor = SUBJECTS.find((s) => s.id === subj)?.color || "#2D6A4F";
   const gradeLabel = GRADES.find((g) => g.id === grade)?.label || grade;
 
+  const changeSubj = (id) => { setSubj(id); setDimData({}); setStep(0); };
+  const changeTopic = (t) => { setTopic(t); setDimData({}); };
+
   const updateDim = (dimId, itemId, val) => setDimData((p) => ({ ...p, [dimId]: { ...(p[dimId] || {}), [itemId]: val } }));
 
   const loadSample = (id) => {
@@ -544,7 +547,7 @@ function App() {
           <h1 style={{ fontFamily: "'Libre Baskerville', Georgia, serif", fontSize: 21, fontWeight: 700, margin: 0 }}>The One Health Lens</h1>
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>K-12 Educator Tool · All Subjects · Track 2: Enhancing What You Already Teach</div>
           <p style={{ fontSize: 12, opacity: 0.75, margin: "8px 0 0", lineHeight: 1.5, maxWidth: 540 }}>
-            Discover One Health connections in your existing lessons — whether you teach health, science, math, ELA, or social studies. Based on Dr. Laura Kahn's multi-dimensional matrix.
+            Discover One Health connections in your existing lessons — whether you teach health, science, math, ELA, social studies, STEM, or art. Based on Dr. Laura Kahn's multi-dimensional matrix.
           </p>
         </div>
       </div>
@@ -568,12 +571,12 @@ function App() {
             </div>
 
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Subject Area</label>
-            <SubjectPicker selected={subj} onSelect={setSubj} />
+            <SubjectPicker selected={subj} onSelect={changeSubj} />
 
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Topic You're Teaching</label>
-            <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder='e.g., "Water Quality" or "Ratios & Proportions"' style={{ width: "100%", padding: "12px 14px", fontSize: 14, border: "2px solid #C6DBC8", borderRadius: 10, outline: "none", fontFamily: "'Source Sans 3', sans-serif", background: "#FAFFFE", boxSizing: "border-box", marginBottom: 12 }} />
+            <input type="text" value={topic} onChange={(e) => changeTopic(e.target.value)} placeholder='e.g., "Water Quality" or "Ratios & Proportions"' style={{ width: "100%", padding: "12px 14px", fontSize: 14, border: "2px solid #C6DBC8", borderRadius: 10, outline: "none", fontFamily: "'Source Sans 3', sans-serif", background: "#FAFFFE", boxSizing: "border-box", marginBottom: 12 }} />
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-              {TOPICS.map((t) => <button key={t} onClick={() => setTopic(t)} style={{ padding: "4px 11px", fontSize: 11, border: topic === t ? "2px solid #2D6A4F" : "1px solid #DDE5DB", borderRadius: 16, background: topic === t ? "#D8F3DC" : "white", color: "#2D6A4F", cursor: "pointer", fontWeight: topic === t ? 700 : 400 }}>{t}</button>)}
+              {TOPICS.map((t) => <button key={t} onClick={() => changeTopic(t)} style={{ padding: "4px 11px", fontSize: 11, border: topic === t ? "2px solid #2D6A4F" : "1px solid #DDE5DB", borderRadius: 16, background: topic === t ? "#D8F3DC" : "white", color: "#2D6A4F", cursor: "pointer", fontWeight: topic === t ? 700 : 400 }}>{t}</button>)}
             </div>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>

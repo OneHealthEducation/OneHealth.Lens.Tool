@@ -278,7 +278,7 @@ Include 2-4 items per category. Every item must be real and verifiable.`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
+          max_tokens: 3000,
           tools: [{ type: "web_search_20250305", name: "web_search" }],
           messages: [{ role: "user", content: prompt }]
         })
@@ -308,52 +308,32 @@ Include 2-4 items per category. Every item must be real and verifiable.`;
     const connectionSummary = connections ? OH_DOMAINS.map((d) => {
       const items = connections[d.id];
       if (!items?.length) return null;
-      return `${d.label}:\n${items.map((c) => `  - ${c}`).join("\n")}`;
-    }).filter(Boolean).join("\n\n") : "";
+      // Send just first sentence of each connection to save tokens
+      return `${d.label}: ${items.map((c) => c.split(". ")[0] + ".").join(" ")}`;
+    }).filter(Boolean).join("\n") : "";
 
     const resSummary = resources && !resources.error ? Object.entries(resources).map(([cat, items]) => {
       if (!Array.isArray(items) || !items.length) return null;
-      return `${cat}: ${items.map((r) => `${r.title}${r.url ? " (" + r.url + ")" : ""}${r.author ? " by " + r.author : ""}`).join("; ")}`;
-    }).filter(Boolean).join("\n") : "No resources loaded yet.";
+      // Just titles, no URLs — saves tokens
+      return `${cat}: ${items.map((r) => r.title).join("; ")}`;
+    }).filter(Boolean).join("\n") : "";
 
-    const prompt = `You are an expert health educator with deep knowledge of One Health and K-12 pedagogy. Create a detailed, ready-to-teach lesson plan for a ${subject} teacher (grades ${gradeText}) that integrates One Health framed Health Education connections into their existing lesson on "${topic}".
+    const prompt = `Create a ready-to-teach lesson plan for a ${subject} teacher (grades ${gradeText}) integrating One Health connections into their lesson on "${topic}".
 
-CONTEXT — The teacher used the One Health Lens tool and found these connections:
+One Health connections found:
 ${connectionSummary}
-${teacherNotes ? `\nTeacher's additional notes: ${teacherNotes}` : ""}
+${teacherNotes ? `\nTeacher notes: ${teacherNotes}` : ""}
+${resSummary ? `\nAvailable resources: ${resSummary}` : ""}
 
-AVAILABLE RESOURCES:
-${resSummary}
+Requirements:
+- Keep original ${subject} content/standards as foundation
+- Weave in One Health connections naturally across human, animal, plant, environment, ecosystem health
+- Reference the available resources where appropriate
+- Include specific activities, discussion questions, and timing
+- Name One Health explicitly so students learn the concept
 
-Create a lesson plan that:
-1. Keeps the original ${subject} content and standards as the foundation
-2. Weaves in One Health framed Health Education connections naturally — students should see how ${topic} relates to human, animal, plant, environment, and ecosystem health
-3. Incorporates the specific resources listed above where appropriate
-4. Is practical and ready to teach — include specific activities, discussion questions, and timing
-5. Names One Health explicitly so students learn the concept
-
-Return ONLY valid JSON with no markdown or backticks:
-{
-  "title": "Lesson title",
-  "overview": "2-3 sentence overview",
-  "grade_band": "${gradeText}",
-  "subject": "${subject}",
-  "duration": "Estimated time",
-  "objectives": ["Content objective 1", "..."],
-  "oh_objectives": ["One Health objective 1", "..."],
-  "materials": ["Material 1 (with URL if available)", "..."],
-  "sections": [
-    {
-      "title": "Section title",
-      "duration": "10 min",
-      "activity": "Detailed description",
-      "oh_connection": "How this connects to One Health (or null)"
-    }
-  ],
-  "assessment": "How to assess understanding",
-  "extensions": ["Extension activity 1", "..."],
-  "teacher_notes": "Tips including how to introduce One Health"
-}`;
+Return ONLY valid JSON:
+{"title":"...","overview":"2-3 sentences","grade_band":"${gradeText}","subject":"${subject}","duration":"...","objectives":["..."],"oh_objectives":["..."],"materials":["..."],"sections":[{"title":"...","duration":"10 min","activity":"...","oh_connection":"..."}],"assessment":"...","extensions":["..."],"teacher_notes":"..."}`;
 
     try {
       const response = await fetch(API_URL, {
@@ -361,7 +341,7 @@ Return ONLY valid JSON with no markdown or backticks:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
+          max_tokens: 3000,
           messages: [{ role: "user", content: prompt }]
         })
       });

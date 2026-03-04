@@ -23,18 +23,20 @@
    ═══════════════════════════════════ */
 const API_URL = "https://oh-lens-proxy.amykempy.workers.dev";
 // For deployed version, change to your worker URL, e.g.:
-// const API_URL = "https://oh-lens-proxy.amykempy.workers.dev";
+// const API_URL = "https://oh-lens-proxy.YOUR-SUBDOMAIN.workers.dev";
 
 /* ═══════════════════════════════════
-   SUBJECT DEFINITIONS
+   CONSTANTS
    ═══════════════════════════════════ */
-const SUBJECTS = [
-  { id: "health", label: "Health / Science", emoji: "🔬", color: "#2D6A4F", desc: "Kahn Matrix: OH Factors, Complexity, Political/Social/Economic, Time" },
-  { id: "math", label: "Mathematics", emoji: "📐", color: "#B45309", desc: "Data Lens: Measure, Patterns, Compare, Predict" },
-  { id: "ela", label: "English Language Arts", emoji: "📝", color: "#7C3AED", desc: "Narrative Lens: Stories, Arguments, Literacy, Communication" },
-  { id: "ss", label: "Social Studies", emoji: "🏛️", color: "#1E40AF", desc: "Systems Lens: Determinants, Policy, History, Equity" },
-  { id: "stem", label: "STEM Integration", emoji: "⚙️", color: "#0E7490", desc: "Design Lens: Problem, Design, Technology, Test & Improve" },
-  { id: "art", label: "Art", emoji: "🎨", color: "#BE185D", desc: "Creative Lens: Observe, Express, Communicate, Connect" },
+const QUICK_SUBJECTS = [
+  { label: "Health / Science", emoji: "🔬", color: "#2D6A4F" },
+  { label: "Mathematics", emoji: "📐", color: "#B45309" },
+  { label: "English Language Arts", emoji: "📝", color: "#7C3AED" },
+  { label: "Social Studies", emoji: "🏛️", color: "#1E40AF" },
+  { label: "STEM / Engineering", emoji: "⚙️", color: "#0E7490" },
+  { label: "Art", emoji: "🎨", color: "#BE185D" },
+  { label: "Physical Education", emoji: "🏃", color: "#059669" },
+  { label: "Music", emoji: "🎵", color: "#7C3AED" },
 ];
 
 const GRADES = [
@@ -44,480 +46,114 @@ const GRADES = [
   { id: "912", label: "9–12", color: "#3182CE" },
 ];
 
-const TOPICS = [
+const TOPIC_SUGGESTIONS = [
   "Nutrition & Food Safety", "Water Quality", "Vector-Borne Diseases", "Antibiotic Resistance",
   "Mental Health & Nature", "Air Pollution", "Zoonotic Diseases", "Climate & Health",
 ];
 
-/* ═══════════════════════════════════
-   DIMENSION DATA PER SUBJECT
-   Each dimension has grade-specific prompts
-   ═══════════════════════════════════ */
-const DIMS = {
-  health: [
-    { id: "oh_factors", title: "One Health Factors", icon: "🌍",
-      items: [
-        { id: "humans", label: "Humans", emoji: "👤", color: "#C1440E",
-          prompts: { k2: ["How does this affect people's health?", "Who might get sick or hurt?"], "35": ["Which groups of people are most affected?", "How do human choices connect?", "What health behaviors matter?"], "68": ["Which populations are most at risk and why?", "What human behaviors contribute to or worsen this issue?", "How are different age groups or communities affected differently?"], "912": ["Analyze demographic risk factors and health disparities.", "How do social determinants intersect with this health challenge?", "What upstream human behaviors drive this issue?"] } },
-        { id: "animals", label: "Animals", emoji: "🐾", color: "#D4842A",
-          prompts: { k2: ["Are any animals involved?", "Can pets get sick from this too?"], "35": ["How are pets or farm animals connected?", "Do wild animals play a role?"], "68": ["How are domestic and wild animals connected?", "Do animals serve as hosts, vectors, or sentinels?", "What veterinary-human health connections exist?"], "912": ["Analyze the role of animal reservoirs and vectors.", "How does livestock health connect to human health here?", "What zoonotic pathways exist?"] } },
-        { id: "plants", label: "Plants", emoji: "🌱", color: "#588157",
-          prompts: { k2: ["Do plants or food crops connect?", "How do plants help people stay healthy?"], "35": ["How do farms or gardens relate?", "Are wild plants affected?"], "68": ["How do crops or agricultural systems relate?", "How do habitat changes in plant communities connect?"], "912": ["Analyze agricultural-health nexus connections.", "How do invasive species or plant biodiversity shifts connect?"] } },
-        { id: "environments", label: "Environments", emoji: "💧", color: "#2B6CB0",
-          prompts: { k2: ["Is water, air, or soil involved?", "Inside or outside?"], "35": ["How does the environment affect this issue?", "Are there pollution connections?"], "68": ["How do water, soil, or air quality relate?", "What environmental changes worsen or improve this?"], "912": ["Analyze abiotic environmental drivers.", "How do environmental changes upstream create health effects downstream?"] } },
-        { id: "ecosystems", label: "Ecosystems", emoji: "🌐", color: "#6B46C1",
-          prompts: { k2: ["How do living things depend on each other here?"], "35": ["Are food webs or habitats affected?", "What happens when balance is disrupted?"], "68": ["How do food webs or biodiversity connect?", "How might ecosystem disruption amplify this issue?"], "912": ["Analyze ecosystem services disruption and cascade effects.", "How does biodiversity loss interact with this health challenge?"] } },
-      ] },
-    { id: "complexity", title: "Levels of Complexity", icon: "🔬",
-      items: [
-        { id: "microbial", label: "Microbial", emoji: "🦠",
-          prompts: { k2: ["Are germs involved?", "How do tiny living things connect?"], "35": ["What bacteria, viruses, or fungi are involved?", "How do microbes spread?"], "68": ["What pathogens or microbiomes connect?", "Is antimicrobial resistance a factor?"], "912": ["Analyze microbial ecology and resistance pathways.", "How do microbiome disruptions across species interconnect?"] } },
-        { id: "individual", label: "Individual", emoji: "🧍",
-          prompts: { k2: ["What happens to one person or animal?"], "35": ["What would this look like as a story about one person?", "How might one family be affected?"], "68": ["What does this look like as a case study?", "How might one individual observe or experience this?"], "912": ["Design a detailed case study spanning human-animal-environment.", "What clinical or field observations at the individual level reveal OH connections?"] } },
-        { id: "population", label: "Population", emoji: "👥",
-          prompts: { k2: ["Does this affect lots of people or animals?"], "35": ["How does this affect whole communities?", "Are there patterns?"], "68": ["What epidemiological patterns exist?", "How do population-level trends reveal OH connections?"], "912": ["Analyze surveillance data and epidemiological methods.", "What population-level interventions address this across species?"] } },
-      ] },
-    { id: "pse", title: "Political, Social & Economic", icon: "🏛️",
-      items: [
-        { id: "political", label: "Political", emoji: "⚖️",
-          prompts: { k2: ["Are there rules to keep people safe?"], "35": ["What rules or laws connect?", "Who makes decisions about this?"], "68": ["What policies at local, state, or federal level relate?", "Which government agencies are involved?"], "912": ["Analyze policy frameworks at multiple governance levels.", "What legislative gaps exist? What policy levers could address this?"] } },
-        { id: "social", label: "Social", emoji: "🤝",
-          prompts: { k2: ["Does this affect some families more than others?"], "35": ["How do culture or community practices connect?", "Is this fair for everyone?"], "68": ["Are there equity, diversity, or cultural dimensions?", "How does education play a role?"], "912": ["Analyze how social determinants of health intersect.", "What systemic inequities does this issue reveal?"] } },
-        { id: "economic", label: "Economic", emoji: "💰",
-          prompts: { k2: ["Does this cost money to fix?"], "35": ["Who pays for this? Who can't afford to?"], "68": ["What are the economic costs and benefits?", "Are there access and affordability issues?"], "912": ["Conduct cost-benefit analysis across sectors.", "How do industry interests interact with public health goals?"] } },
-      ] },
-    { id: "time", title: "Time Dimensions", icon: "⏳",
-      items: [
-        { id: "days", label: "Days/Weeks", emoji: "📅", prompts: { k2: ["What happens right away?"], "35": ["What changes in the first few days?"], "68": ["What acute changes occur in days or weeks?"], "912": ["What rapid-response dynamics operate at this timescale?"] } },
-        { id: "months", label: "Months", emoji: "🗓️", prompts: { k2: ["Does this change with the seasons?"], "35": ["Are there seasonal patterns?", "What could you study in a school year?"], "68": ["What seasonal or semester-scale patterns exist?"], "912": ["What longitudinal data could students collect within a semester?"] } },
-        { id: "years", label: "Years", emoji: "📊", prompts: { k2: ["Has this gotten better or worse over time?"], "35": ["How has this changed over several years?"], "68": ["What multi-year trends or policy impacts are visible?"], "912": ["Analyze year-over-year surveillance data and policy implementation timelines."] } },
-        { id: "decades", label: "Decades+", emoji: "🏛️", prompts: { k2: ["Was this different when your grandparents were young?"], "35": ["How is this different from 50 years ago?"], "68": ["What decade-scale changes connect (climate, land use, evolution)?"], "912": ["Analyze historical emergence, evolutionary dynamics, and long-term projections."] } },
-      ] },
-  ],
-
-  math: [
-    { id: "measure", title: "What Can We Measure?", icon: "📏",
-      items: [
-        { id: "count", label: "Counting & Quantities", emoji: "🔢",
-          prompts: { k2: ["What can we count? (animals, people sick, plants)"], "35": ["What quantities can we collect? (cases of illness, animal populations, water samples)"], "68": ["What data could students collect or find? (incidence rates, species counts, pollution levels)"], "912": ["What quantitative data exists across human, animal, and environmental health?"] } },
-        { id: "spatial", label: "Spatial & Geographic Data", emoji: "🗺️",
-          prompts: { k2: ["Can we show this on a map?"], "35": ["Where does this happen? Can we map it?"], "68": ["What geographic patterns exist? Could students create maps?"], "912": ["What GIS or spatial analysis could reveal cross-species or environmental patterns?"] } },
-        { id: "survey", label: "Surveys & Sampling", emoji: "📋",
-          prompts: { k2: ["Could we ask people questions about this?"], "35": ["What survey could students design?", "How would we pick who to ask?"], "68": ["What sampling methods apply? How could students design a survey?"], "912": ["Design a multi-variable survey capturing human, animal, and environmental data."] } },
-      ] },
-    { id: "patterns", title: "What Patterns Emerge?", icon: "📈",
-      items: [
-        { id: "trends", label: "Trends Over Time", emoji: "📊",
-          prompts: { k2: ["Is this going up or down? Can we draw it?"], "35": ["Can students make a line graph showing change over time?"], "68": ["What trends can students graph? Rate of change?"], "912": ["What time-series data reveals emerging OH patterns? Regression analysis?"] } },
-        { id: "rates", label: "Rates & Ratios", emoji: "➗",
-          prompts: { k2: ["How many out of the whole group?"], "35": ["What fractions or ratios apply? (e.g., 3 out of 10 animals affected)"], "68": ["Can students calculate incidence rates, prevalence, or attack rates?"], "912": ["Calculate age-adjusted rates, relative risk, or odds ratios across populations."] } },
-        { id: "correlations", label: "Relationships & Correlations", emoji: "🔗",
-          prompts: { k2: ["When this happens, does that happen too?"], "35": ["Do two things seem to go together?"], "68": ["What correlations exist between human, animal, or environmental variables?"], "912": ["Analyze multivariate relationships. Distinguish correlation from causation."] } },
-      ] },
-    { id: "compare", title: "What Comparisons Tell the Story?", icon: "⚖️",
-      items: [
-        { id: "groups", label: "Comparing Groups", emoji: "👥",
-          prompts: { k2: ["How are these two groups different?"], "35": ["How do urban vs. rural areas compare? Different animal species?"], "68": ["Compare across populations, regions, or species. What disparities emerge?"], "912": ["Design comparative analyses: human vs. animal disease rates, regional disparities, cost comparisons."] } },
-        { id: "costbenefit", label: "Cost-Benefit Analysis", emoji: "💰",
-          prompts: { k2: ["Is it worth it to fix this?"], "35": ["What does it cost? What do we save?"], "68": ["Can students calculate cost of prevention vs. treatment across sectors?"], "912": ["Conduct cross-sector cost-benefit analysis including veterinary, environmental, and human health costs."] } },
-        { id: "proportions", label: "Proportions & Scale", emoji: "📐",
-          prompts: { k2: ["How big is this compared to that?"], "35": ["Can we use fractions or percentages to show how much?"], "68": ["What proportional reasoning reveals OH connections? (% of disease burden, land use allocation)"], "912": ["Use proportional reasoning to analyze resource allocation across OH sectors."] } },
-      ] },
-    { id: "predict", title: "What Can We Predict?", icon: "🔮",
-      items: [
-        { id: "model", label: "Modeling & Simulation", emoji: "🎮",
-          prompts: { k2: ["What do you think will happen next?"], "35": ["If this keeps going, what might happen?", "Can we make a simple model?"], "68": ["Can students build simple models? (SIR disease models, population growth)"], "912": ["Build mathematical models predicting disease spread, population dynamics, or environmental thresholds."] } },
-        { id: "probability", label: "Probability & Risk", emoji: "🎲",
-          prompts: { k2: ["Is this likely to happen?"], "35": ["What are the chances? How likely is this?"], "68": ["What probability concepts apply? Risk assessment?"], "912": ["Calculate probability-based risk assessments across human, animal, and environmental scenarios."] } },
-        { id: "projection", label: "Projections & Scenarios", emoji: "📉",
-          prompts: { k2: ["What if we change one thing?"], "35": ["What happens if we do nothing vs. take action?"], "68": ["What if/then scenarios can students explore? (policy change, climate change, intervention)"], "912": ["Design scenario analyses: model outcomes under different policy, climate, or intervention assumptions."] } },
-      ] },
-  ],
-
-  ela: [
-    { id: "stories", title: "Whose Stories Intersect?", icon: "📖",
-      items: [
-        { id: "patient", label: "Patient/Personal Narratives", emoji: "🗣️",
-          prompts: { k2: ["Can we hear a story about someone who experienced this?"], "35": ["What would a family's story sound like? A child, a pet owner, a farmer?"], "68": ["What first-person narratives illuminate the human side? Patient perspectives, family impacts?"], "912": ["Analyze illness narratives, patient advocacy writing, and how personal stories shape health policy."] } },
-        { id: "stakeholder", label: "Multiple Perspectives", emoji: "👁️",
-          prompts: { k2: ["Who else cares about this? Animals? Farmers? Doctors?"], "35": ["How would a veterinarian tell this story vs. a doctor vs. a farmer?"], "68": ["What stakeholder perspectives exist? (clinician, veterinarian, environmentalist, policymaker, patient, community member)"], "912": ["Analyze how different stakeholders frame the same OH issue. What narratives dominate and whose are missing?"] } },
-        { id: "literature", label: "Literature Connections", emoji: "📚",
-          prompts: { k2: ["Are there picture books about animals and nature and health?"], "35": ["What books or articles connect humans, animals, and nature?"], "68": ["What nonfiction, journalism, or fiction explores human-animal-environment health connections?"], "912": ["Analyze literary and journalistic works that illuminate OH themes (environmental justice, pandemic narratives, agricultural writing)."] } },
-      ] },
-    { id: "arguments", title: "What Arguments Are Being Made?", icon: "💬",
-      items: [
-        { id: "persuasion", label: "Persuasive Writing & Debate", emoji: "📢",
-          prompts: { k2: ["Can we tell others why this matters?"], "35": ["What opinion could students write about?", "What sides are there?"], "68": ["What persuasive writing topics emerge? What claims need evidence from multiple disciplines?"], "912": ["Analyze argumentation in OH policy debates. What evidence from veterinary, environmental, and human health sciences supports each position?"] } },
-        { id: "claims", label: "Claims & Evidence", emoji: "🔎",
-          prompts: { k2: ["How do we know this is true?"], "35": ["What facts support this? Where do they come from?"], "68": ["What cross-disciplinary evidence supports claims? How do students evaluate source credibility across fields?"], "912": ["Evaluate evidence hierarchies across disciplines. How do veterinary case reports, epidemiological data, and environmental monitoring each contribute?"] } },
-        { id: "media", label: "Media Literacy & Health Communication", emoji: "📱",
-          prompts: { k2: ["How do we hear about this on TV or from grown-ups?"], "35": ["How does the news talk about this? Is it always accurate?"], "68": ["How do media reports frame this issue? What misinformation exists? What health communication challenges?"], "912": ["Critically analyze media framing of OH issues. Design health communication for cross-disciplinary audiences."] } },
-      ] },
-    { id: "infoliteracy", title: "Information Literacy Across Disciplines", icon: "🧭",
-      items: [
-        { id: "sources", label: "Cross-Disciplinary Sourcing", emoji: "📑",
-          prompts: { k2: ["Who should we ask about this?"], "35": ["Would we ask a doctor, a vet, or a scientist? Why might we need all three?"], "68": ["What kinds of sources exist? (medical journals, vet reports, EPA data, community testimony) How do you evaluate each?"], "912": ["Navigate discipline-specific databases and sources. Synthesize evidence from PubMed, veterinary literature, and environmental reports."] } },
-        { id: "vocabulary", label: "Academic Vocabulary Across Fields", emoji: "📝",
-          prompts: { k2: ["What new words do we learn from different helpers?"], "35": ["What words does a doctor use vs. a vet vs. a park ranger?"], "68": ["What discipline-specific vocabulary do students encounter? How does jargon differ?"], "912": ["Analyze how terminology shapes understanding across disciplines. Practice translating between expert and public audiences."] } },
-      ] },
-    { id: "communicate", title: "How Do We Communicate About This?", icon: "✉️",
-      items: [
-        { id: "audience", label: "Writing for Different Audiences", emoji: "🎯",
-          prompts: { k2: ["How would we tell a friend vs. a teacher about this?"], "35": ["How would you explain this to a younger student? To a grown-up? To the mayor?"], "68": ["How would students write about this for different audiences? (peers, policymakers, scientists, community)"], "912": ["Write policy briefs, op-eds, grant abstracts, or community communications that synthesize OH evidence for specific audiences."] } },
-        { id: "advocacy", label: "Advocacy Writing", emoji: "✊",
-          prompts: { k2: ["Can we make a poster to help people know?"], "35": ["Could students write a letter to someone who can help?"], "68": ["What advocacy writing opportunities exist? (letters to editors, congressional letters, community campaigns)"], "912": ["Design comprehensive advocacy campaigns integrating personal narrative, data, and cross-sector evidence."] } },
-      ] },
-  ],
-
-  ss: [
-    { id: "determinants", title: "Social Determinants of Health", icon: "🏘️",
-      items: [
-        { id: "housing", label: "Housing & Neighborhood", emoji: "🏠",
-          prompts: { k2: ["Does where you live affect your health?"], "35": ["How does your neighborhood affect people and animals?", "Are some neighborhoods healthier?"], "68": ["How do housing conditions, food access, and neighborhood environments affect human AND animal health?"], "912": ["Analyze how residential segregation, zoning, housing quality, and neighborhood characteristics create health disparities across species."] } },
-        { id: "access", label: "Access to Care & Resources", emoji: "🏥",
-          prompts: { k2: ["Can everyone go to the doctor? Can pets go to the vet?"], "35": ["Who has access to doctors? Vets? Clean water? Healthy food?"], "68": ["How does access to healthcare, veterinary care, clean environments, and healthy food intersect?"], "912": ["Map disparities in access to human healthcare, veterinary services, and environmental protection across communities."] } },
-        { id: "education", label: "Education & Health Literacy", emoji: "📚",
-          prompts: { k2: ["Does learning help us stay healthy?"], "35": ["How does what people know affect their health choices?"], "68": ["How does health literacy — including understanding of animal and environmental health — affect outcomes?"], "912": ["Analyze how educational attainment and health literacy across OH domains affect community health resilience."] } },
-      ] },
-    { id: "policy", title: "Policy, Law & Governance", icon: "⚖️",
-      items: [
-        { id: "local", label: "Local & State Policy", emoji: "🏫",
-          prompts: { k2: ["What rules help keep our community healthy?"], "35": ["What local rules protect people, animals, and the environment?"], "68": ["What local ordinances and state laws affect human, animal, and environmental health in your area?"], "912": ["Analyze local zoning, public health codes, animal welfare laws, and environmental regulations as an interconnected policy system."] } },
-        { id: "federal", label: "Federal & International", emoji: "🌎",
-          prompts: { k2: ["Does the government help keep everyone safe?"], "35": ["What national rules exist? Do countries work together on this?"], "68": ["What federal agencies and international organizations address this? (CDC, USDA, EPA, WHO, FAO, WOAH)"], "912": ["Analyze the governance architecture: How do CDC, USDA, EPA, WHO, FAO, and WOAH coordinate (or fail to) on this issue?"] } },
-        { id: "legislation", label: "Legislation & Civic Action", emoji: "📜",
-          prompts: { k2: ["Can we help make things better?"], "35": ["Could a new law help? What would it say?"], "68": ["What legislation exists or is needed? How can citizens advocate for change?"], "912": ["Draft or analyze proposed legislation. Conduct policy analysis across human health, agricultural, and environmental law."] } },
-      ] },
-    { id: "history", title: "Historical Patterns & Connections", icon: "📜",
-      items: [
-        { id: "past_decisions", label: "How Past Decisions Shape Today", emoji: "🔙",
-          prompts: { k2: ["Was this different a long time ago?"], "35": ["How did past choices about farms, cities, or nature create today's problems?"], "68": ["How have historical land use, agricultural, or public health decisions created current OH challenges?"], "912": ["Trace how industrialization, colonialism, agricultural policy, and urbanization created today's interconnected health challenges."] } },
-        { id: "pandemics", label: "Disease & Society Through Time", emoji: "🦠",
-          prompts: { k2: ["Have people gotten sick from animals before?"], "35": ["What can we learn from past outbreaks?"], "68": ["How have past pandemics and outbreaks revealed OH connections? What did society learn (or fail to learn)?"], "912": ["Analyze the co-evolution of human-animal-environmental health challenges and societal responses across historical periods."] } },
-        { id: "movements", label: "Reform Movements & Advocacy", emoji: "✊",
-          prompts: { k2: ["Have people ever worked together to make health better?"], "35": ["What happened when communities demanded cleaner water or safer food?"], "68": ["How have environmental justice, animal welfare, and public health movements overlapped historically?"], "912": ["Analyze convergence of public health, environmental, and animal welfare reform movements. What coalition-building strategies worked?"] } },
-      ] },
-    { id: "equity", title: "Power, Equity & Justice", icon: "⚖️",
-      items: [
-        { id: "who_decides", label: "Who Decides?", emoji: "👑",
-          prompts: { k2: ["Who gets to make the rules about this?"], "35": ["Who decides what happens? Do all people get a say?"], "68": ["Who holds decision-making power on this issue? Whose voices are missing from policy tables?"], "912": ["Analyze power structures in OH governance. Who controls policy, funding, and narratives? What participatory models exist?"] } },
-        { id: "env_justice", label: "Environmental Justice", emoji: "🌿",
-          prompts: { k2: ["Is this fair for everyone?"], "35": ["Do some communities have more pollution or less clean water?"], "68": ["How are environmental burdens distributed? Which communities bear disproportionate health impacts?"], "912": ["Apply environmental justice frameworks. Analyze how race, class, and geography intersect with environmental exposure and health outcomes."] } },
-        { id: "global_equity", label: "Global Health Equity", emoji: "🌍",
-          prompts: { k2: ["Do kids everywhere have the same healthy things?"], "35": ["How is this different in rich countries vs. poor countries?"], "68": ["How do global inequities in resources affect health outcomes for people, animals, and environments differently?"], "912": ["Analyze global health equity through OH: How do trade, development, and governance structures create differential health outcomes?"] } },
-      ] },
-  ],
-
-  stem: [
-    { id: "problem", title: "What's the Problem?", icon: "🔍",
-      items: [
-        { id: "oh_challenge", label: "Identify the OH Challenge", emoji: "🎯",
-          prompts: { k2: ["What problem affects people AND animals or the environment?"], "35": ["What problem connects human, animal, and environmental health?"], "68": ["Define a problem that spans human, animal, and environmental health. Who or what is affected?"], "912": ["Frame a complex problem statement addressing interconnected human, animal, and environmental health dimensions."] } },
-        { id: "stakeholders", label: "Who Is Affected?", emoji: "👥",
-          prompts: { k2: ["Who is this a problem for — people, animals, or nature?"], "35": ["Who are the 'clients'? People? Animals? Ecosystems? All three?"], "68": ["Identify all stakeholders: communities, species, ecosystems. How do their needs overlap or conflict?"], "912": ["Map stakeholder needs across OH sectors. Where do human, veterinary, and environmental priorities align or conflict?"] } },
-        { id: "constraints", label: "Constraints & Criteria", emoji: "📏",
-          prompts: { k2: ["What do we have to be careful about?"], "35": ["What limits do we have? (money, time, materials, rules)"], "68": ["What constraints exist? (cost, safety, environmental impact, equity, regulations across sectors)"], "912": ["Define criteria and constraints spanning multiple sectors: regulatory, economic, ethical, environmental, and equity considerations."] } },
-      ] },
-    { id: "design", title: "What Can We Design?", icon: "✏️",
-      items: [
-        { id: "prototype", label: "Prototypes & Models", emoji: "🔧",
-          prompts: { k2: ["Can we build something to help?"], "35": ["What could we build, create, or invent to help solve this?"], "68": ["What prototype could address this OH challenge? A device? A process? A system?"], "912": ["Design a prototype that addresses interconnected health challenges. Consider impact across human, animal, and environmental systems."] } },
-        { id: "systems_design", label: "Systems & Processes", emoji: "🔄",
-          prompts: { k2: ["Can we make a plan to help?"], "35": ["Can we design a step-by-step process or system to fix this?"], "68": ["Can students design a system (monitoring, prevention, response) that connects multiple OH sectors?"], "912": ["Engineer an integrated system addressing surveillance, prevention, or response across human, veterinary, and environmental health."] } },
-        { id: "tools", label: "Tools & Instruments", emoji: "🛠️",
-          prompts: { k2: ["What tools could help us learn about this?"], "35": ["What tools or instruments could we design to measure or track this?"], "68": ["What instruments or tools could students design for data collection across OH domains?"], "912": ["Design data collection instruments or monitoring tools that capture cross-sector OH data simultaneously."] } },
-      ] },
-    { id: "technology", title: "What Technology Helps?", icon: "💻",
-      items: [
-        { id: "data_tech", label: "Data Collection Technology", emoji: "📡",
-          prompts: { k2: ["Can a computer or tablet help us learn about this?"], "35": ["What technology could we use to collect information? (sensors, apps, cameras)"], "68": ["What technologies enable data collection across OH sectors? (sensors, GIS, citizen science apps, remote sensing)"], "912": ["Evaluate technologies for integrated OH surveillance: IoT sensors, satellite imagery, genomic tools, AI/ML analysis."] } },
-        { id: "monitoring", label: "Monitoring & Surveillance", emoji: "📊",
-          prompts: { k2: ["How can we keep watching to see if things change?"], "35": ["How could technology help us track this over time?"], "68": ["What monitoring systems exist or could be designed to track human, animal, and environmental health indicators together?"], "912": ["Analyze or design integrated surveillance platforms connecting human health records, veterinary databases, and environmental monitoring."] } },
-        { id: "communication", label: "Communication Technology", emoji: "📱",
-          prompts: { k2: ["How can we tell others what we found?"], "35": ["How could we share what we learned with our community using technology?"], "68": ["What communication tools could share OH findings across disciplines? Dashboards? Apps? Websites?"], "912": ["Design information systems that communicate OH data to multiple audiences: clinicians, veterinarians, policymakers, and the public."] } },
-      ] },
-    { id: "test_improve", title: "How Do We Test & Improve?", icon: "🔬",
-      items: [
-        { id: "testing", label: "Testing & Evaluation", emoji: "✅",
-          prompts: { k2: ["How will we know if it works?"], "35": ["How can we test whether our solution helps people AND animals AND the environment?"], "68": ["What evidence would show the solution works across OH sectors? How do we measure success for each?"], "912": ["Design evaluation metrics spanning human health outcomes, animal health outcomes, and environmental indicators. How do you measure cross-sector impact?"] } },
-        { id: "iteration", label: "Iteration & Redesign", emoji: "🔁",
-          prompts: { k2: ["What could we change to make it better?"], "35": ["What didn't work? How can we improve it?"], "68": ["Based on testing, what redesign would improve outcomes across all OH sectors?"], "912": ["Apply iterative design: How does feedback from one OH sector inform improvements in another? What tradeoffs emerge?"] } },
-        { id: "scaling", label: "Scaling & Impact", emoji: "📈",
-          prompts: { k2: ["Could other schools use this idea too?"], "35": ["Could our solution work in other places? What would need to change?"], "68": ["How would this solution scale? What works locally vs. globally? How does context affect design?"], "912": ["Analyze scalability: What systems-level changes would be needed to implement this solution across jurisdictions, species, and environments?"] } },
-      ] },
-  ],
-
-  art: [
-    { id: "observe", title: "How Can We See It?", icon: "👁️",
-      items: [
-        { id: "scientific_illus", label: "Scientific Illustration", emoji: "🖊️",
-          prompts: { k2: ["Can you draw an animal, plant, or place connected to this?"], "35": ["Draw or diagram how humans, animals, and environments are connected here."], "68": ["Create scientific illustrations showing the relationships between organisms, environments, and health outcomes."], "912": ["Develop scientific illustrations or infographics that visually communicate complex OH system interactions."] } },
-        { id: "data_viz", label: "Data Visualization", emoji: "📊",
-          prompts: { k2: ["Can we make a picture that shows how many?"], "35": ["How could we turn numbers or information into a picture or chart?"], "68": ["Design a data visualization that tells the OH story — maps, infographics, charts showing cross-sector connections."], "912": ["Create publication-quality data visualizations that communicate multivariate OH data to non-specialist audiences."] } },
-        { id: "observation", label: "Observation Drawing", emoji: "🔍",
-          prompts: { k2: ["Look carefully — what details can you see and draw?"], "35": ["Observe closely and sketch what you see. What details reveal human-nature connections?"], "68": ["Use observational drawing techniques to document environments, organisms, or health-related phenomena in your community."], "912": ["Apply observational art methods to document ecological, environmental, or community health conditions. What do trained eyes reveal?"] } },
-      ] },
-    { id: "express", title: "How Can We Feel It?", icon: "❤️",
-      items: [
-        { id: "empathy", label: "Empathy & Perspective", emoji: "🪞",
-          prompts: { k2: ["How would the animal feel? How would the tree feel?"], "35": ["Create art showing how different living things experience this — a child, a pet, a wild animal, a river."], "68": ["Create artwork that expresses the experience of this OH issue from different perspectives — human, animal, environmental."], "912": ["Develop empathy-centered art exploring lived experiences across OH domains. How does perspective shift meaning?"] } },
-        { id: "emotion", label: "Emotional Expression", emoji: "🎭",
-          prompts: { k2: ["What colors or shapes show how this makes you feel?"], "35": ["Use color, shape, and texture to express emotions connected to this issue."], "68": ["Create expressive artwork that captures the emotional dimensions of an OH challenge — fear, hope, loss, resilience."], "912": ["Develop a body of work exploring the emotional landscapes of OH issues. How does art process what data cannot?"] } },
-        { id: "cultural", label: "Cultural Connections", emoji: "🌺",
-          prompts: { k2: ["Do different families have different traditions about animals and nature?"], "35": ["How do different cultures show the connection between people, animals, and nature through art?"], "68": ["Explore how different cultures visually represent human-animal-environment relationships. What traditional art forms address OH themes?"], "912": ["Analyze how diverse cultural art traditions embody OH principles — Indigenous ecological art, environmental art movements, science-art collaborations."] } },
-      ] },
-    { id: "communicate", title: "How Can We Share It?", icon: "📢",
-      items: [
-        { id: "public_art", label: "Public Art & Awareness", emoji: "🖼️",
-          prompts: { k2: ["Can we make a poster to help people learn?"], "35": ["Design a poster or mural that teaches your community about this OH connection."], "68": ["Design public art (mural, installation, poster campaign) that raises community awareness of an OH issue."], "912": ["Propose a public art installation or campaign that communicates an OH message to a specific audience. Consider site, medium, and audience."] } },
-        { id: "advocacy_art", label: "Advocacy Through Art", emoji: "✊",
-          prompts: { k2: ["Can we make art that helps people care?"], "35": ["Create art that persuades people to help protect people, animals, AND the environment."], "68": ["Create advocacy art: How can visual media persuade audiences to take action on an OH issue?"], "912": ["Develop an arts-based advocacy campaign targeting a specific OH policy issue. How has art historically driven health and environmental policy?"] } },
-        { id: "documentation", label: "Visual Documentation", emoji: "📸",
-          prompts: { k2: ["Can we take pictures or draw what we see outside?"], "35": ["Create a photo essay or sketchbook documenting OH connections in your neighborhood."], "68": ["Document an OH issue through photography, video, or illustrated journalism."], "912": ["Create a documentary or photojournalism project that investigates an OH issue in your community. Combine visual evidence with narrative."] } },
-      ] },
-    { id: "connect", title: "What Story Does It Tell?", icon: "🧩",
-      items: [
-        { id: "narrative_art", label: "Visual Narrative", emoji: "📖",
-          prompts: { k2: ["Can you draw a story about people and animals helping each other stay healthy?"], "35": ["Create a comic, picture book, or storyboard showing how humans, animals, and nature are connected."], "68": ["Develop a visual narrative (comic, graphic story, animation storyboard) that tells an OH story from multiple perspectives."], "912": ["Create a graphic narrative or animated piece that explores an OH challenge through sequential visual storytelling."] } },
-        { id: "interdisciplinary", label: "Art Meets Science", emoji: "🔬",
-          prompts: { k2: ["Can art help us understand science?"], "35": ["How can art help explain something scientific about health and nature?"], "68": ["Create art that makes scientific OH concepts accessible — visualize the unseen (microbes, ecosystems, disease pathways)."], "912": ["Develop a science-art collaboration: How can artistic methods reveal OH patterns that traditional data presentation cannot?"] } },
-        { id: "community", label: "Community Art Projects", emoji: "🤝",
-          prompts: { k2: ["Can our class make something together about this?"], "35": ["Design a class art project that shows your community's OH connections."], "68": ["Propose a collaborative community art project that engages multiple stakeholders around an OH theme."], "912": ["Design a participatory community art project that gathers diverse voices (patients, farmers, vets, ecologists) around an OH issue."] } },
-      ] },
-  ],
-};
-const STANDARDS = {
-  health: {
-    label: "National Health Education Standards (NHES)",
-    note: "Two editions exist as of 2025 — NCSHE (2022) and SHAPE America (2024). The eight core standards are shared. Check which your state adopted.",
-    items: [
-      { id: "nhes1", code: "1", title: "Core Concepts", oh: "The interconnection of human-animal-plant-environment health IS a core concept." },
-      { id: "nhes2", code: "2", title: "Analyzing Influences", oh: "OH reveals influences beyond human-only factors." },
-      { id: "nhes3", code: "3", title: "Accessing Information", oh: "Students access veterinary, environmental, and public health info." },
-      { id: "nhes4", code: "4", title: "Interpersonal Communication", oh: "Cross-disciplinary health communication." },
-      { id: "nhes5", code: "5", title: "Decision-Making", oh: "Decisions considering impacts across species and environments." },
-      { id: "nhes6", code: "6", title: "Goal-Setting", oh: "Goals that account for broader system impacts." },
-      { id: "nhes7", code: "7", title: "Health Practices", oh: "Behaviors that support human AND animal/environmental health." },
-      { id: "nhes8", code: "8", title: "Advocacy", oh: "Advocacy extending to animal welfare and environmental protection." },
-    ],
-    science: {
-      label: "NGSS",
-      items: {
-        k2: [{ code: "K-LS1", t: "Interdependent Relationships" }, { code: "K-ESS3", t: "Humans & Environment" }, { code: "2-LS4", t: "Interdependent Relationships" }],
-        "35": [{ code: "3-LS4", t: "Environmental Impacts" }, { code: "5-ESS3", t: "Earth & Human Activity" }, { code: "5-LS2", t: "Matter & Energy in Ecosystems" }],
-        "68": [{ code: "MS-LS2", t: "Ecosystems: Interactions" }, { code: "MS-ESS3", t: "Human Impacts" }, { code: "MS-LS1", t: "Molecules to Organisms" }],
-        "912": [{ code: "HS-LS2", t: "Ecosystems: Interactions" }, { code: "HS-LS4", t: "Evolution: Unity & Diversity" }, { code: "HS-ESS3", t: "Earth & Human Activity" }, { code: "HS-ETS1", t: "Engineering Design" }],
-      },
-    },
-  },
-  math: {
-    label: "Common Core State Standards – Mathematics (CCSS-M)",
-    note: "Most states use CCSS-M or closely aligned standards. Select the domains that connect to your OH-enhanced lesson.",
-    items: [
-      { id: "moa", code: "OA", title: "Operations & Algebraic Thinking", oh: "Compute rates, ratios, and proportions from health data." },
-      { id: "mmd", code: "MD", title: "Measurement & Data", oh: "Measure environmental variables; collect and display health data." },
-      { id: "msp", code: "SP", title: "Statistics & Probability", oh: "Analyze distributions, calculate risk, interpret surveillance data." },
-      { id: "mrp", code: "RP", title: "Ratios & Proportional Relationships", oh: "Attack rates, prevalence, incidence — all ratios." },
-      { id: "mf", code: "F", title: "Functions", oh: "Model disease spread, population dynamics, environmental change." },
-      { id: "mmp", code: "MP", title: "Mathematical Practices (cross-cutting)", oh: "Model with mathematics, reason abstractly, use tools strategically." },
-    ],
-  },
-  ela: {
-    label: "Common Core State Standards – ELA (CCSS-ELA)",
-    note: "Most states use CCSS-ELA or closely aligned literacy standards. Select the strands that connect.",
-    items: [
-      { id: "erl", code: "RL/RI", title: "Reading (Literature & Informational)", oh: "Read narratives and informational text about OH topics across disciplines." },
-      { id: "ew", code: "W", title: "Writing", oh: "Write arguments, informational, and narrative texts about OH issues." },
-      { id: "esl", code: "SL", title: "Speaking & Listening", oh: "Discuss, debate, and present OH topics from multiple stakeholder perspectives." },
-      { id: "el", code: "L", title: "Language", oh: "Acquire and use cross-disciplinary vocabulary from health, vet, and environmental sciences." },
-      { id: "erh", code: "RH/RST", title: "Literacy in History/Science (6-12)", oh: "Read and evaluate primary sources across OH disciplines." },
-    ],
-  },
-  ss: {
-    label: "C3 Framework (College, Career & Civic Life)",
-    note: "The C3 Framework guides social studies standards in most states. Select dimensions that connect.",
-    items: [
-      { id: "sd1", code: "D1", title: "Developing Questions & Planning Inquiries", oh: "Generate compelling questions about OH challenges." },
-      { id: "sd2c", code: "D2-Civ", title: "Civics: Participation & Deliberation", oh: "Analyze civic engagement opportunities in OH policy." },
-      { id: "sd2e", code: "D2-Eco", title: "Economics: Decision-Making", oh: "Evaluate economic costs/benefits across OH sectors." },
-      { id: "sd2g", code: "D2-Geo", title: "Geography: Human-Environment Interaction", oh: "Analyze spatial patterns of OH challenges." },
-      { id: "sd2h", code: "D2-His", title: "History: Change & Continuity", oh: "Trace historical roots of current OH issues." },
-      { id: "sd4", code: "D4", title: "Taking Informed Action", oh: "Communicate conclusions and take informed civic action on OH." },
-    ],
-  },
-  stem: {
-    label: "NGSS Engineering & ITEEA Standards for Technological & Engineering Literacy",
-    note: "STEM integration uses engineering design standards plus applicable science standards. Check your state's adopted frameworks.",
-    items: [
-      { id: "ets_define", code: "ETS-Define", title: "Defining & Delimiting Problems", oh: "Define OH problems spanning human, animal, and environmental systems." },
-      { id: "ets_design", code: "ETS-Design", title: "Developing Possible Solutions", oh: "Design solutions addressing interconnected health challenges." },
-      { id: "ets_optimize", code: "ETS-Optimize", title: "Optimizing Design Solutions", oh: "Iterate solutions using feedback from multiple OH sectors." },
-      { id: "stel_tech", code: "STEL", title: "Technological & Engineering Literacy", oh: "Apply engineering design processes to real-world OH challenges." },
-      { id: "stem_mp", code: "Practices", title: "Science & Engineering Practices (cross-cutting)", oh: "Ask questions, develop models, plan investigations, analyze data across OH domains." },
-    ],
-    science: {
-      label: "NGSS Engineering Design",
-      items: {
-        k2: [{ code: "K-2-ETS1-1", t: "Ask questions & define problems" }, { code: "K-2-ETS1-2", t: "Develop a simple model" }, { code: "K-2-ETS1-3", t: "Analyze & compare solutions" }],
-        "35": [{ code: "3-5-ETS1-1", t: "Define a design problem" }, { code: "3-5-ETS1-2", t: "Generate & compare solutions" }, { code: "3-5-ETS1-3", t: "Plan & carry out fair tests" }],
-        "68": [{ code: "MS-ETS1-1", t: "Define criteria & constraints" }, { code: "MS-ETS1-2", t: "Evaluate competing solutions" }, { code: "MS-ETS1-3", t: "Analyze data from tests" }, { code: "MS-ETS1-4", t: "Develop & iteratively test models" }],
-        "912": [{ code: "HS-ETS1-1", t: "Analyze complex problems" }, { code: "HS-ETS1-2", t: "Design solutions with constraints" }, { code: "HS-ETS1-3", t: "Evaluate with systematic methods" }, { code: "HS-ETS1-4", t: "Use computer simulation" }],
-      },
-    },
-  },
-  art: {
-    label: "National Core Arts Standards",
-    note: "The National Core Arts Standards organize visual arts learning around Creating, Presenting, Responding, and Connecting. Select processes that align.",
-    items: [
-      { id: "art_cr", code: "Creating", title: "Creating", oh: "Generate & develop artistic ideas that investigate OH themes." },
-      { id: "art_pr", code: "Presenting", title: "Presenting / Producing", oh: "Share artwork that communicates OH concepts to varied audiences." },
-      { id: "art_re", code: "Responding", title: "Responding", oh: "Interpret and evaluate art that addresses human-animal-environment connections." },
-      { id: "art_cn", code: "Connecting", title: "Connecting", oh: "Relate artistic ideas to personal, community, and global OH issues." },
-      { id: "art_media", code: "Media Arts", title: "Media Arts (if applicable)", oh: "Use digital media, photography, or film to document and communicate OH stories." },
-    ],
-  },
-};
+const OH_DOMAINS = [
+  { id: "human", label: "Human Health", emoji: "👤", color: "#C1440E", desc: "How people's health is affected" },
+  { id: "animal", label: "Animal Health", emoji: "🐾", color: "#D4842A", desc: "How domestic and wild animals connect" },
+  { id: "plant", label: "Plant Health", emoji: "🌱", color: "#588157", desc: "How crops, forests, and plant systems relate" },
+  { id: "environment", label: "Environmental Health", emoji: "💧", color: "#2B6CB0", desc: "How water, air, soil, and climate factor in" },
+  { id: "ecosystem", label: "Ecosystem Health", emoji: "🌐", color: "#6B46C1", desc: "How biodiversity, food webs, and balance matter" },
+];
 
 /* ═══════════════════════════════════
    SAMPLE WALKTHROUGHS
    ═══════════════════════════════════ */
 const SAMPLES = {
-  health: {
-    topic: "Vector-Borne Diseases", grade: "68", subject: "Health Education / Life Science",
-    data: {
-      oh_factors: { humans: "Tick-borne diseases (Lyme, Alpha-gal) affect millions. Children outdoors, rural communities at higher risk. Diagnosis often requires collaboration between human and veterinary professionals.", animals: "Deer, rodents, birds are reservoir hosts. Dogs and horses get tick-borne diseases too — vets seeing more tick illness in pets can be an early warning for human cases.", plants: "Invasive Japanese barberry creates humid microclimates ideal for ticks. Deforestation and suburban development alter plant communities that affect tick populations.", environments: "Climate (temp, humidity) directly affects tick survival and range expansion. Land use change increases human-tick encounters.", ecosystems: "Loss of biodiversity ('dilution effect') may increase disease risk. When predator diversity declines, rodent hosts increase, amplifying pathogen cycles." },
-      complexity: { microbial: "Borrelia burgdorferi, Anaplasma, Babesia cycle between ticks and mammals. The tick's own microbiome affects transmission. AMR in treatment is emerging.", individual: "Case study: A family's dog tests positive for Lyme — what does that mean for the family? A patient navigating complex diagnosis.", population: "CDC data shows Lyme expanding geographically. Epidemiological patterns connect land use, wildlife, and human case clusters." },
-      pse: { political: "Kay Hagan Tick Act (federal). State reporting requirements vary. Local vector control funding. School outdoor policies.", social: "Outdoor recreation culture, awareness gaps in newly-emerging areas, health equity in diagnosis access.", economic: "~$1.3 billion/year in U.S. Lyme treatment costs. Lost productivity. Vet costs. Prevention vs. treatment economics." },
-      time: { days: "24-48 hour tick attachment for Lyme transmission. Acute symptom onset. Early treatment window.", months: "Seasonal tick activity (spring-fall). School year timing for outdoor education.", years: "Geographic range expansion year-over-year. Multi-year case trends. Policy timelines.", decades: "Climate-driven habitat expansion. Historical emergence of Lyme (1970s-present). Land use changes." },
-    },
-    stds: ["nhes1", "nhes2", "nhes3", "nhes5", "nhes7", "nhes8"],
-    sci: ["MS-LS2", "MS-ESS3"],
+  vbd: {
+    subject: "Health / Science", grade: "68", topic: "Vector-Borne Diseases",
+    connections: {
+      human: [
+        "Tick-borne diseases like Lyme and Alpha-gal syndrome affect millions of Americans, with children and outdoor workers at higher risk. Diagnosis often requires understanding symptoms that overlap across multiple conditions.",
+        "Students can explore how geographic location, outdoor behaviors, and access to healthcare affect who gets diagnosed and treated — and who doesn't.",
+        "Mental health impacts are significant: chronic Lyme disease affects quality of life, and fear of tick exposure can reduce time spent outdoors, which has its own health consequences."
+      ],
+      animal: [
+        "Deer, rodents, and birds serve as reservoir hosts for tick-borne pathogens. Dogs and horses also get tick-borne diseases — a vet seeing more tick illness in pets can be an early warning for human cases.",
+        "The concept of sentinel species is powerful here: when animals get sick first, they're signaling a health threat that could affect humans too.",
+        "Wildlife management decisions (deer population control, habitat corridors) directly affect tick populations and human disease risk."
+      ],
+      plant: [
+        "Invasive Japanese barberry creates humid microclimates at ground level that are ideal for tick survival. Students can study how plant community changes affect disease risk.",
+        "Deforestation and suburban development alter the plant communities that regulate tick habitats — more edge habitat between forests and lawns means more tick encounters."
+      ],
+      environment: [
+        "Climate change is expanding the geographic range of ticks — warmer winters mean ticks survive in areas they couldn't before. Students can map tick range expansion over decades.",
+        "Land use patterns (suburban sprawl into forested areas) increase human-tick encounters. Students can analyze how local development decisions create health risks."
+      ],
+      ecosystem: [
+        "The 'dilution effect': when predator diversity declines, rodent host populations increase, amplifying the pathogen cycle. Biodiversity loss may directly increase disease risk.",
+        "Students can explore how ecosystem disruption (removing predators, fragmenting habitat) cascades through food webs to ultimately affect human health — a powerful One Health case study."
+      ]
+    }
   },
-  math: {
-    topic: "Foodborne Illness Outbreaks", grade: "68", subject: "Mathematics (Ratios & Data)",
-    data: {
-      measure: { count: "Count cases by food source, location, age group. Number of contaminated samples. Students collect data from CDC outbreak reports.", spatial: "Map outbreak locations. Plot cases by county or state. Identify geographic clusters.", survey: "Design a survey: What did you eat? When did symptoms start? Students practice survey methodology." },
-      patterns: { trends: "Graph outbreak cases over time (epidemic curve). Identify peak, plateau, decline. Compare outbreaks across years.", rates: "Calculate attack rate: (# ill / # exposed) × 100. Compare attack rates for different food items to identify the source. This IS epidemiology.", correlations: "Plot food consumption vs. illness. Do people who ate the potato salad get sick more often? Scatter plots and correlation." },
-      compare: { groups: "Compare attack rates by age, gender, food item. Urban vs. rural outbreak patterns. Human vs. animal Salmonella rates.", costbenefit: "Cost of a recall vs. cost of illness. Hospital costs per case × number of cases. Prevention program costs vs. outbreak costs.", proportions: "What proportion of total foodborne illness is Salmonella vs. E. coli? What fraction of tested samples were contaminated?" },
-      predict: { model: "Simple SIR model: If one contaminated batch serves 500 people and attack rate is 30%, how many cases? What if we catch it after 100 servings?", probability: "Probability of illness given exposure. If 1 in 4 chicken samples are contaminated, what's the risk over 10 meals?", projection: "If contamination rates decrease 5% per year with new regulations, project forward 10 years. Graph it." },
-    },
-    stds: ["mmd", "mrp", "msp", "mmp"],
+  ratios: {
+    subject: "Mathematics", grade: "68", topic: "Ratios and Proportions",
+    connections: {
+      human: [
+        "Students can calculate disease attack rates (# ill ÷ # exposed) using real CDC outbreak data — this IS ratios, applied to real human health scenarios.",
+        "Medication dosing is proportional reasoning: mg per kg of body weight. Students can explore why children and adults get different doses, and what happens when proportions are wrong.",
+        "Nutrition labels use ratios everywhere: % daily value, servings per container, calories per serving. Students can analyze how food choices affect health using proportional reasoning."
+      ],
+      animal: [
+        "Veterinary medicine uses the same proportional dosing — but across species with vastly different body sizes. A dose for a horse vs. a cat vs. a human is a great ratio problem.",
+        "Students can compare disease rates in animal populations vs. human populations in the same region. When 3 out of 10 dogs test positive for Lyme in a county, what might that predict for humans?"
+      ],
+      plant: [
+        "Crop yield ratios (harvest per acre) connect to food security and nutrition. Students can calculate how pesticide application rates affect both yield and environmental health.",
+        "Seed germination rates and plant survival ratios in polluted vs. clean soil make excellent ratio experiments with One Health implications."
+      ],
+      environment: [
+        "Water quality measurements are ratios: parts per million of lead, bacteria counts per 100mL. Students can compare water samples and calculate whether levels exceed safe thresholds.",
+        "Air quality index calculations use proportional reasoning. Students can analyze local AQI data and calculate how many days per year exceed healthy levels."
+      ],
+      ecosystem: [
+        "Species diversity ratios (predator:prey, native:invasive) reveal ecosystem health. Students can calculate biodiversity indices using real field data.",
+        "The dilution effect in disease ecology is fundamentally about ratios: as the proportion of competent hosts changes in an ecosystem, disease risk changes proportionally."
+      ]
+    }
   },
-  ela: {
-    topic: "Clean Water Access", grade: "68", subject: "ELA (Informational Reading & Argument)",
-    data: {
-      stories: { patient: "First-person accounts from families in Flint, MI. Farmers whose livestock were affected by water contamination. A veterinarian noticing illness patterns.", stakeholder: "Compare perspectives: a city official, a parent, a farmer, an EPA scientist, a veterinarian, a fish & wildlife officer. Same water, different stakes.", literature: "Nonfiction: investigative journalism about water crises. Read excerpts analyzing how reporters uncovered connections between environmental contamination and health." },
-      arguments: { persuasion: "Should your town invest in water infrastructure upgrades? Students write persuasive letters using evidence from human health, animal health, AND environmental data.", claims: "Evaluate claims: 'Our water is safe.' What evidence from multiple disciplines would you need? Water testing, health records, wildlife surveys?", media: "Compare how local news vs. national media vs. social media covered a water contamination event. What framing differences exist?" },
-      infoliteracy: { sources: "Where do you find water quality data? (EPA, state environmental agencies, local reports) How do you evaluate a community Facebook post vs. a CDC report vs. a vet school study?", vocabulary: "Compare: 'parts per million,' 'coliform counts,' 'watershed,' 'exposure pathway' — how does vocabulary shift across disciplines?" },
-      communicate: { audience: "Write about water quality for: a 3rd grader, a city council, a scientific journal, a community newsletter. How does the message change?", advocacy: "Draft a letter to your state representative about water monitoring that integrates human health data, veterinary observations, and environmental testing." },
-    },
-    stds: ["erl", "ew", "esl", "erh"],
-  },
-  ss: {
-    topic: "Food Deserts & Community Health", grade: "68", subject: "Social Studies (Civics & Geography)",
-    data: {
-      determinants: { housing: "Neighborhoods without grocery stores have higher rates of diet-related disease. Stray animal populations also increase. Green space loss affects both mental health and ecosystem services.", access: "Map access to: grocery stores, doctors' offices, veterinary clinics, parks. Overlay these maps. What patterns emerge about which communities have resources?", education: "Health literacy affects food choices. Do families understand food labels? The connection between food production practices and health? Animal welfare in food systems?" },
-      policy: { local: "Zoning laws determine where grocery stores, farms, and food processing facilities locate. School lunch policies. Local urban agriculture ordinances.", federal: "USDA food assistance programs. FDA food safety regulations. Farm Bill subsidies. EPA regulations on agricultural runoff. How do these interact?", legislation: "Research proposed legislation addressing food access. Could students draft a local resolution supporting community gardens that addresses human nutrition AND urban ecosystem health?" },
-      history: { past_decisions: "How did redlining create today's food deserts? How did agricultural industrialization change the food-animal-environment relationship? Historical displacement and food sovereignty.", pandemics: "COVID-19 exposed food system vulnerabilities — meatpacking outbreaks affected workers (human), revealed animal welfare conditions, and disrupted supply chains.", movements: "Trace the overlap of food justice, environmental justice, and animal welfare movements. Where do they converge? Where do they conflict?" },
-      equity: { who_decides: "Who decides what food is available where? Corporate grocers, city planners, federal agricultural policy. Where is community voice?", env_justice: "Communities of color are more likely to live near industrial agriculture with associated environmental health burdens.", global_equity: "How does global trade in food affect food security in developing nations? How are animals, environments, and workers treated differently across countries?" },
-    },
-    stds: ["sd1", "sd2c", "sd2g", "sd2h", "sd4"],
-  },
-  stem: {
-    topic: "Mosquito-Borne Disease Prevention", grade: "68", subject: "STEM (Engineering Design)",
-    data: {
-      problem: { oh_challenge: "Mosquitoes transmit diseases (Zika, West Nile, dengue) to humans AND animals. Climate change is expanding mosquito range. Traditional control (pesticides) harms beneficial insects, aquatic ecosystems, and non-target wildlife.", stakeholders: "Human communities (especially outdoor workers, children), pets and livestock (heartworm, EEE), wildlife (bird populations affected by West Nile), aquatic ecosystems (pesticide runoff), pollinators (non-target insecticide exposure).", constraints: "Cost-effective for communities. Environmentally safe. Must not harm non-target species. Must work in varying climates. Accessible to under-resourced communities. Must comply with EPA and local regulations." },
-      design: { prototype: "Design a low-cost mosquito trap that targets disease-carrying species while minimizing harm to beneficial insects. OR design a community-scale standing water monitoring system using low-cost sensors.", systems_design: "Design an integrated surveillance system: mosquito trap counts + veterinary case reports (heartworm, EEE in horses) + human case data + weather/environmental monitoring. How do these data streams connect?", tools: "Design a citizen science data collection kit: mosquito identification guide, GPS-tagged collection tubes, simple weather station, mobile app for reporting standing water." },
-      technology: { data_tech: "Temperature/humidity sensors for habitat prediction. Drone surveys for standing water identification. eDNA sampling for mosquito species identification. Satellite imagery for land use change.", monitoring: "CDC ArboNET surveillance system connects human + veterinary + mosquito testing data. Design a school-based version: track mosquitoes on campus, connect to local vet clinic data, monitor weather patterns.", communication: "Design a community dashboard showing: mosquito activity levels, reported animal cases, human case alerts, and prevention tips. How do you make cross-sector data accessible to the public?" },
-      test_improve: { testing: "Test trap effectiveness: number captured, species specificity, non-target capture rate. Test surveillance system: does combining human + animal + environmental data improve early warning?", iteration: "First design catches too many beneficial insects → redesign with species-specific attractants. Surveillance system misses rural areas → add veterinary clinic reporting. Iterate based on cross-sector feedback.", scaling: "Could this system work in other regions with different mosquito species? What about resource-limited settings? How does the design need to adapt for tropical vs. temperate climates?" },
-    },
-    stds: ["ets_define", "ets_design", "ets_optimize", "stem_mp"],
-    sci: ["MS-ETS1-1", "MS-ETS1-2", "MS-ETS1-4"],
-  },
-  art: {
-    topic: "Pollinators & Food Systems", grade: "68", subject: "Art (Visual Arts & Media)",
-    data: {
-      observe: { scientific_illus: "Create detailed botanical illustrations of local pollinator plants alongside the insects they support. Draw the anatomy of a bee's pollen-collecting structures. Illustrate a pollination cycle diagram.", data_viz: "Design an infographic showing pollinator decline data alongside crop production data and pesticide usage — three datasets, one visual story. Map local pollinator gardens vs. food deserts.", observation: "Spend time outdoors observing and sketching pollinators at work. Document which species visit which plants. Draw what you see through a hand lens. Record time of day, weather, behavior." },
-      express: { empathy: "Create artwork from the perspective of a bee navigating a monoculture farm vs. a biodiverse garden. What does a food desert 'feel like' for both humans and pollinators?", emotion: "Use color and composition to express the tension between agricultural productivity and ecosystem health. What does 'decline' look like visually? What does 'recovery' look like?", cultural: "Explore how different cultures have depicted bees and pollinators in art throughout history. Compare Indigenous land management art with contemporary environmental art. How do cultural values shape our relationship with pollinators?" },
-      communicate: { public_art: "Design a school mural that teaches the community how pollinator health connects to human food security and ecosystem health. Plan the mural's location, scale, and audience.", advocacy_art: "Create a poster campaign advocating for pollinator-friendly practices in your community — targeting homeowners, farmers, AND local government. How does the visual message change for each audience?", documentation: "Create a photo essay documenting pollinator habitat in your community — from thriving gardens to concrete deserts. Pair images with data about food access in the same neighborhoods." },
-      connect: { narrative_art: "Create a graphic story following a single bee's journey through different environments — farm, suburb, city, garden — showing how each affects both pollinator and human health.", interdisciplinary: "Create art that visualizes what's invisible: pesticide residues moving from fields to flowers to bees to honey to humans. How can art make the unseen connections visible?", community: "Organize a community art project: each participant creates a tile representing one pollinator-plant-human food connection. Assemble into a collaborative mosaic showing the full system." },
-    },
-    stds: ["art_cr", "art_pr", "art_cn"],
-  },
+  water: {
+    subject: "Social Studies", grade: "68", topic: "Clean Water Access",
+    connections: {
+      human: [
+        "Communities without clean water face higher rates of gastrointestinal disease, developmental delays in children (lead exposure), and economic hardship from medical costs and lost work days.",
+        "Students can investigate who has clean water and who doesn't — mapping water quality against income, race, and geography reveals patterns of environmental injustice."
+      ],
+      animal: [
+        "Livestock need clean water too — contaminated agricultural water affects animal health, which affects food safety, which cycles back to human health.",
+        "Aquatic wildlife serves as a sentinel: fish kills and amphibian declines signal water contamination that may affect human communities downstream."
+      ],
+      plant: [
+        "Agricultural irrigation with contaminated water introduces pollutants into the food supply. Students can trace how water quality upstream affects what ends up on dinner plates.",
+        "Wetland plants naturally filter water — when wetlands are destroyed for development, communities lose free water treatment and must pay for engineered alternatives."
+      ],
+      environment: [
+        "Water contamination doesn't stay local: runoff carries agricultural chemicals, pharmaceuticals, and industrial waste through entire watersheds. Students can map how upstream decisions affect downstream communities.",
+        "Climate change affects water availability through drought, flooding, and changing precipitation patterns — students can analyze how these shifts create health inequities."
+      ],
+      ecosystem: [
+        "Healthy aquatic ecosystems provide natural water purification services worth billions of dollars annually. When ecosystems are degraded, those services must be replaced with expensive infrastructure.",
+        "Students can explore the concept of ecosystem services: what does nature do for free that we'd have to pay for if it were gone?"
+      ]
+    }
+  }
 };
-
-/* ═══════════════════════════════════
-   COMPONENTS
-   ═══════════════════════════════════ */
-function SubjectPicker({ selected, onSelect }) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
-      {SUBJECTS.map((s) => (
-        <div key={s.id} onClick={() => onSelect(s.id)} style={{ border: selected === s.id ? `2.5px solid ${s.color}` : "1.5px solid #DDE5DB", borderRadius: 14, padding: "16px 14px", cursor: "pointer", background: selected === s.id ? `${s.color}08` : "white", transition: "all 0.2s" }}>
-          <div style={{ fontSize: 26, marginBottom: 4 }}>{s.emoji}</div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: selected === s.id ? s.color : "#1B3A2A", marginBottom: 2 }}>{s.label}</div>
-          <div style={{ fontSize: 11, color: "#7B8C82", lineHeight: 1.3 }}>{s.desc}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Card({ item, grade, value, onChange, accent }) {
-  const [open, setOpen] = useState(false);
-  const c = item.color || accent || "#2D6A4F";
-  const ps = item.prompts ? (typeof item.prompts === "object" && !Array.isArray(item.prompts) ? (item.prompts[grade] || item.prompts["68"] || []) : item.prompts) : [];
-
-  return (
-    <div style={{ border: `1.5px solid ${value ? c + "50" : "#E2E8E0"}`, borderRadius: 12, marginBottom: 8, background: value ? `${c}05` : "#FEFFFE", overflow: "hidden" }}>
-      <div onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", cursor: "pointer", userSelect: "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 20 }}>{item.emoji}</span>
-          <span style={{ fontWeight: 700, fontSize: 14, color: "#1B3A2A" }}>{item.label}</span>
-          {value && <span style={{ fontSize: 9, background: c + "20", color: c, padding: "2px 7px", borderRadius: 8, fontWeight: 700, textTransform: "uppercase" }}>✓</span>}
-        </div>
-        <span style={{ fontSize: 13, color: "#AAA", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>▾</span>
-      </div>
-      {open && (
-        <div style={{ padding: "0 14px 14px" }}>
-          {ps.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
-              {ps.map((p, i) => (
-                <div key={i} style={{ fontSize: 12, color: "#3D5A4C", padding: "6px 10px", background: "#F0F7F2", borderRadius: 7, borderLeft: `3px solid ${c}`, lineHeight: 1.35 }}>💡 {p}</div>
-              ))}
-            </div>
-          )}
-          <textarea value={value || ""} onChange={(e) => onChange(item.id, e.target.value)} placeholder="Type your connections..." rows={2} style={{ width: "100%", padding: 10, fontSize: 13, border: "1.5px solid #D0DDD5", borderRadius: 8, resize: "vertical", fontFamily: "'Source Sans 3', sans-serif", outline: "none", boxSizing: "border-box", lineHeight: 1.45, background: "#FAFFFE" }} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#D0DDD5")} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StdToggle({ item, selected, toggle, color }) {
-  const sel = selected.includes(item.id);
-  return (
-    <div onClick={() => toggle(item.id)} style={{ display: "flex", alignItems: "flex-start", gap: 8, border: sel ? `2px solid ${color}` : "1.5px solid #E2E8E0", borderRadius: 10, padding: "10px 12px", background: sel ? `${color}08` : "white", cursor: "pointer", marginBottom: 6 }}>
-      <span style={{ width: 20, height: 20, borderRadius: 5, background: sel ? color : "#E2E8E0", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{sel ? "✓" : ""}</span>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{item.code}: {item.title}</div>
-        {sel && item.oh && <div style={{ fontSize: 11, color, marginTop: 3, fontStyle: "italic", lineHeight: 1.3 }}>🌍 {item.oh}</div>}
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════
    MAIN APP
    ═══════════════════════════════════ */
 function App() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [subj, setSubj] = useState("");
+  const [subject, setSubject] = useState("");
   const [grade, setGrade] = useState("68");
   const [topic, setTopic] = useState("");
-  const [subjArea, setSubjArea] = useState("");
-  const [step, setStep] = useState(0); // 0=setup, 1-N=dims, N+1=results
-  const [dimData, setDimData] = useState({});
+  const [step, setStep] = useState(0); // 0=setup, 1=results
+  const [connections, setConnections] = useState(null); // { human: [...], animal: [...], ... }
+  const [teacherNotes, setTeacherNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [resources, setResources] = useState(null);
@@ -528,42 +164,46 @@ function App() {
 
   useEffect(() => { ref.current?.scrollTo({ top: 0, behavior: "smooth" }); }, [step, showWelcome]);
 
-  const dims = DIMS[subj] || [];
-  const subjColor = SUBJECTS.find((s) => s.id === subj)?.color || "#2D6A4F";
+  const accentColor = QUICK_SUBJECTS.find((s) => s.label === subject)?.color || "#2D6A4F";
   const gradeLabel = GRADES.find((g) => g.id === grade)?.label || grade;
 
-  const changeSubj = (id) => { setSubj(id); setDimData({}); setAiError(""); setResources(null); setLessonPlan(null); };
-  const changeTopic = (t) => { setTopic(t); setDimData({}); setAiError(""); setResources(null); setLessonPlan(null); };
+  const reset = () => {
+    setSubject(""); setGrade("68"); setTopic(""); setStep(0);
+    setConnections(null); setTeacherNotes(""); setAiError("");
+    setResources(null); setLessonPlan(null); setShowWelcome(true);
+  };
 
-  const updateDim = (dimId, itemId, val) => setDimData((p) => ({ ...p, [dimId]: { ...(p[dimId] || {}), [itemId]: val } }));
-
+  /* ─── AI: Generate Connections ─── */
   const generateConnections = async () => {
     setLoading(true);
     setAiError("");
-    const currentDims = DIMS[subj] || [];
+    setConnections(null);
+    setResources(null);
+    setLessonPlan(null);
+    setTeacherNotes("");
     const gradeText = GRADES.find((g) => g.id === grade)?.label || grade;
-    const subjLabel = SUBJECTS.find((s) => s.id === subj)?.label || subj;
 
-    // Build a structure description for the AI
-    const dimDescription = currentDims.map((dim) => ({
-      dimId: dim.id,
-      dimTitle: dim.title,
-      items: dim.items.map((it) => ({ itemId: it.id, itemLabel: it.label }))
-    }));
-
-    const prompt = `You are a One Health education expert helping a ${subjLabel} teacher (grades ${gradeText}) find One Health connections in their lesson topic: "${topic}".
+    const prompt = `You are a One Health education expert helping a ${subject} teacher (grades ${gradeText}) find One Health connections in their lesson topic: "${topic}".
 
 One Health recognizes that the health of people, animals, plants, environments, and ecosystems are all connected and interdependent.
 
-For each dimension and item below, write a brief suggested connection (2-3 sentences) explaining how the teacher's topic "${topic}" relates to that aspect through a One Health lens. Be specific, practical, and grade-appropriate for ${gradeText}. If a particular item genuinely does not connect to this topic, write "No clear connection for this topic." but try hard to find connections — most topics connect in surprising ways.
+For each of the five One Health domains below, generate 2-4 specific, practical, grade-appropriate connections explaining how "${topic}" relates to that domain. Each connection should be 1-2 sentences that a teacher could immediately understand and use. Be concrete — give specific examples, data sources, or activities where possible.
 
-Write ONLY valid JSON — no markdown, no backticks, no preamble. Return an object where keys are dimension IDs, and values are objects where keys are item IDs and values are the suggested connection text.
+IMPORTANT:
+- Only include connections that are genuinely meaningful. If a domain has no real connection to this topic, return an empty array — don't force it.
+- Tailor language and complexity to grades ${gradeText}.
+- Frame connections as teaching opportunities: how could this teacher use this in their ${subject} classroom?
+- Think creatively but stay grounded — surprising connections are great, but they must be real and defensible.
 
-Dimensions and items:
-${JSON.stringify(dimDescription, null, 2)}
+Domains:
+- human: How does "${topic}" connect to human health? (physical health, mental health, nutrition, disease, safety, health behaviors)
+- animal: How does "${topic}" connect to animal health? (pets, livestock, wildlife, veterinary medicine, zoonotic disease, sentinel species)
+- plant: How does "${topic}" connect to plant health? (crops, food systems, agriculture, habitat, invasive species, medicinal plants)
+- environment: How does "${topic}" connect to environmental health? (water quality, air quality, soil health, climate, pollution, land use)
+- ecosystem: How does "${topic}" connect to ecosystem health? (biodiversity, food webs, ecosystem services, balance, resilience)
 
-Return format example:
-{"dimension_id": {"item_id": "Your suggested connection text here..."}}`;
+Return ONLY valid JSON — no markdown, no backticks, no preamble:
+{"human": ["connection 1", "connection 2"], "animal": ["..."], "plant": ["..."], "environment": ["..."], "ecosystem": ["..."]}`;
 
     try {
       const response = await fetch(API_URL, {
@@ -571,43 +211,46 @@ Return format example:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
+          max_tokens: 3000,
           messages: [{ role: "user", content: prompt }]
         })
       });
 
       const data = await response.json();
-      const text = data.content?.map((c) => c.text || "").join("") || "";
+      if (data.error) {
+        throw new Error(data.error.message || JSON.stringify(data.error));
+      }
+      const text = data.content?.map((c) => c.text || "").join("\n") || "";
       const clean = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
-      setDimData(parsed);
+      const jsonMatch = clean.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid response received. Try again.");
+      const parsed = JSON.parse(jsonMatch[0]);
+      setConnections(parsed);
       setStep(1);
     } catch (err) {
       console.error("AI generation error:", err);
-      setAiError("Couldn't generate suggestions — you can still use the tool manually.");
-      setStep(1);
+      setAiError("Error: " + (err.message || "Unknown error") + " — you can still explore the tool using sample walkthroughs.");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ─── AI: Generate Resources ─── */
   const generateResources = async () => {
     setLoadingRes(true);
     const gradeText = GRADES.find((g) => g.id === grade)?.label || grade;
-    const subjLabel = SUBJECTS.find((s) => s.id === subj)?.label || subj;
 
-    // Summarize the connections found
-    const connectionSummary = Object.entries(dimData).map(([dimId, items]) => {
-      const dim = dims.find((d) => d.id === dimId);
-      const filled = Object.entries(items).filter(([_, v]) => v?.trim());
-      if (!filled.length) return null;
-      return `${dim?.title || dimId}: ${filled.map(([iid, v]) => v).join("; ")}`;
-    }).filter(Boolean).join("\n");
+    const connectionSummary = connections ? OH_DOMAINS.map((d) => {
+      const items = connections[d.id];
+      if (!items?.length) return null;
+      return `${d.label}: ${items.join("; ")}`;
+    }).filter(Boolean).join("\n") : "";
 
-    const prompt = `You are a One Health education resource specialist. A ${subjLabel} teacher (grades ${gradeText}) has been exploring One Health connections in their lesson topic: "${topic}".
+    const prompt = `You are a One Health education resource specialist. A ${subject} teacher (grades ${gradeText}) has been exploring One Health connections in their lesson topic: "${topic}".
 
 Here are the connections they found:
 ${connectionSummary}
+${teacherNotes ? `\nTeacher's additional notes: ${teacherNotes}` : ""}
 
 Find and recommend specific, real, reliable teaching resources that this teacher could use to bring these One Health connections into their ${gradeText} classroom. Search for current, accessible resources.
 
@@ -618,7 +261,7 @@ IMPORTANT: Only recommend resources that actually exist. Use web search to verif
 - Real published books (picture books for K-2, novels/nonfiction for older grades)
 - Free or low-cost classroom materials
 
-Return ONLY valid JSON with no markdown or backticks. Use this exact structure:
+Return ONLY valid JSON with no markdown or backticks:
 {
   "data_sources": [{"title": "...", "url": "...", "description": "...", "grades": "..."}],
   "case_studies": [{"title": "...", "url": "...", "description": "...", "grades": "..."}],
@@ -627,7 +270,7 @@ Return ONLY valid JSON with no markdown or backticks. Use this exact structure:
   "multimedia": [{"title": "...", "url": "...", "description": "...", "grades": "...", "type": "video|interactive|podcast"}]
 }
 
-Include 2-4 items per category. Every item must be real and verifiable. If a URL is not available, omit the url field.`;
+Include 2-4 items per category. Every item must be real and verifiable.`;
 
     try {
       const response = await fetch(API_URL, {
@@ -642,47 +285,48 @@ Include 2-4 items per category. Every item must be real and verifiable. If a URL
       });
 
       const data = await response.json();
-      const text = data.content?.filter((c) => c.type === "text").map((c) => c.text || "").join("") || "";
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      const text = data.content?.filter((c) => c.type === "text").map((c) => c.text || "").join("\n") || "";
       const clean = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
-      setResources(parsed);
+      // Extract the JSON object from potentially mixed text
+      const jsonMatch = clean.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid response received. The AI may still be searching — try again.");
+      setResources(JSON.parse(jsonMatch[0]));
     } catch (err) {
       console.error("Resource generation error:", err);
-      setResources({ error: "Couldn't find resources right now. Try again in a moment." });
+      setResources({ error: "Error: " + (err.message || "Couldn't find resources right now.") });
     } finally {
       setLoadingRes(false);
     }
   };
 
+  /* ─── AI: Generate Lesson Plan ─── */
   const generateLessonPlan = async () => {
     setLoadingLP(true);
     const gradeText = GRADES.find((g) => g.id === grade)?.label || grade;
-    const subjLabel = SUBJECTS.find((s) => s.id === subj)?.label || subj;
 
-    // Summarize connections
-    const connectionSummary = Object.entries(dimData).map(([dimId, items]) => {
-      const dim = dims.find((d) => d.id === dimId);
-      const filled = Object.entries(items).filter(([_, v]) => v?.trim());
-      if (!filled.length) return null;
-      return `${dim?.title || dimId}:\n${filled.map(([iid, v]) => `  - ${v}`).join("\n")}`;
-    }).filter(Boolean).join("\n\n");
+    const connectionSummary = connections ? OH_DOMAINS.map((d) => {
+      const items = connections[d.id];
+      if (!items?.length) return null;
+      return `${d.label}:\n${items.map((c) => `  - ${c}`).join("\n")}`;
+    }).filter(Boolean).join("\n\n") : "";
 
-    // Summarize resources
-    const resSummary = resources ? Object.entries(resources).map(([cat, items]) => {
+    const resSummary = resources && !resources.error ? Object.entries(resources).map(([cat, items]) => {
       if (!Array.isArray(items) || !items.length) return null;
       return `${cat}: ${items.map((r) => `${r.title}${r.url ? " (" + r.url + ")" : ""}${r.author ? " by " + r.author : ""}`).join("; ")}`;
     }).filter(Boolean).join("\n") : "No resources loaded yet.";
 
-    const prompt = `You are an expert health educator with deep knowledge of One Health and K-12 pedagogy. Create a detailed, ready-to-teach lesson plan for a ${subjLabel} teacher (grades ${gradeText}) that integrates One Health framed Health Education connections into their existing lesson on "${topic}".
+    const prompt = `You are an expert health educator with deep knowledge of One Health and K-12 pedagogy. Create a detailed, ready-to-teach lesson plan for a ${subject} teacher (grades ${gradeText}) that integrates One Health framed Health Education connections into their existing lesson on "${topic}".
 
 CONTEXT — The teacher used the One Health Lens tool and found these connections:
 ${connectionSummary}
+${teacherNotes ? `\nTeacher's additional notes: ${teacherNotes}` : ""}
 
 AVAILABLE RESOURCES:
 ${resSummary}
 
 Create a lesson plan that:
-1. Keeps the original ${subjLabel} content and standards as the foundation
+1. Keeps the original ${subject} content and standards as the foundation
 2. Weaves in One Health framed Health Education connections naturally — students should see how ${topic} relates to human, animal, plant, environment, and ecosystem health
 3. Incorporates the specific resources listed above where appropriate
 4. Is practical and ready to teach — include specific activities, discussion questions, and timing
@@ -691,24 +335,24 @@ Create a lesson plan that:
 Return ONLY valid JSON with no markdown or backticks:
 {
   "title": "Lesson title",
-  "overview": "2-3 sentence overview of the lesson",
+  "overview": "2-3 sentence overview",
   "grade_band": "${gradeText}",
-  "subject": "${subjLabel}",
-  "duration": "Estimated time (e.g., '2 class periods, 45 min each')",
-  "objectives": ["Learning objective 1", "Learning objective 2", "..."],
-  "oh_objectives": ["One Health learning objective 1", "..."],
-  "materials": ["Material or resource 1 (with URL if available)", "..."],
+  "subject": "${subject}",
+  "duration": "Estimated time",
+  "objectives": ["Content objective 1", "..."],
+  "oh_objectives": ["One Health objective 1", "..."],
+  "materials": ["Material 1 (with URL if available)", "..."],
   "sections": [
     {
-      "title": "Section title (e.g., 'Opening Hook', 'Core Activity', 'OH Connection')",
+      "title": "Section title",
       "duration": "10 min",
-      "activity": "Detailed description of what teacher and students do",
-      "oh_connection": "How this section connects to One Health (or null if it's pure content setup)"
+      "activity": "Detailed description",
+      "oh_connection": "How this connects to One Health (or null)"
     }
   ],
-  "assessment": "How to assess student understanding of both content and OH connections",
-  "extensions": ["Optional extension activity 1", "..."],
-  "teacher_notes": "Tips for the teacher, including how to introduce One Health if students haven't encountered it before"
+  "assessment": "How to assess understanding",
+  "extensions": ["Extension activity 1", "..."],
+  "teacher_notes": "Tips including how to introduce One Health"
 }`;
 
     try {
@@ -723,62 +367,96 @@ Return ONLY valid JSON with no markdown or backticks:
       });
 
       const data = await response.json();
-      const text = data.content?.filter((c) => c.type === "text").map((c) => c.text || "").join("") || "";
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      const text = data.content?.filter((c) => c.type === "text").map((c) => c.text || "").join("\n") || "";
       const clean = text.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
-      setLessonPlan(parsed);
+      const jsonMatch = clean.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No valid response received. Try again.");
+      setLessonPlan(JSON.parse(jsonMatch[0]));
     } catch (err) {
-      console.error("Lesson plan generation error:", err);
-      setLessonPlan({ error: "Couldn't generate the lesson plan right now. Try again in a moment." });
+      console.error("Lesson plan error:", err);
+      setLessonPlan({ error: "Error: " + (err.message || "Couldn't generate the lesson plan.") });
     } finally {
       setLoadingLP(false);
     }
   };
 
-  const loadSample = (id) => {
-    const s = SAMPLES[id];
-    setSubj(id); setTopic(s.topic); setGrade(s.grade); setSubjArea(s.subject);
-    const d = {}; Object.entries(s.data).forEach(([dk, dv]) => { d[dk] = dv; });
-    setDimData(d); setStep((DIMS[id] || []).length + 1); setShowWelcome(false);
+  /* ─── Load Sample ─── */
+  const loadSample = (key) => {
+    const s = SAMPLES[key];
+    setSubject(s.subject); setGrade(s.grade); setTopic(s.topic);
+    setConnections(s.connections); setStep(1); setShowWelcome(false);
+    setTeacherNotes(""); setResources(null); setLessonPlan(null);
   };
 
-  const reset = () => { setSubj(""); setGrade("68"); setTopic(""); setSubjArea(""); setStep(0); setDimData({}); setShowWelcome(true); setResources(null); setLessonPlan(null); };
-  const canNext = step === 0 ? (subj && topic.trim()) : true;
+  /* ─── Helpers ─── */
+  const canGenerate = subject.trim() && topic.trim();
+  const filledDomains = connections ? OH_DOMAINS.filter((d) => connections[d.id]?.length > 0) : [];
+  const totalBullets = connections ? OH_DOMAINS.reduce((t, d) => t + (connections[d.id]?.length || 0), 0) : 0;
+  const [copied, setCopied] = useState(false);
 
-  const filledCount = Object.values(dimData).reduce((t, d) => t + Object.values(d).filter((v) => v?.trim()).length, 0);
-  const totalSlots = dims.reduce((t, d) => t + d.items.length, 0);
+  const formatLessonPlanText = () => {
+    if (!lessonPlan) return "";
+    let t = `${lessonPlan.title}\n${lessonPlan.subject} · ${lessonPlan.grade_band} · ${lessonPlan.duration}\n\n`;
+    t += `${lessonPlan.overview}\n\n`;
+    if (lessonPlan.objectives?.length) { t += `CONTENT OBJECTIVES\n${lessonPlan.objectives.map(o => `• ${o}`).join("\n")}\n\n`; }
+    if (lessonPlan.oh_objectives?.length) { t += `ONE HEALTH OBJECTIVES\n${lessonPlan.oh_objectives.map(o => `• ${o}`).join("\n")}\n\n`; }
+    if (lessonPlan.materials?.length) { t += `MATERIALS NEEDED\n${lessonPlan.materials.map(m => `• ${m}`).join("\n")}\n\n`; }
+    if (lessonPlan.sections?.length) {
+      t += `LESSON FLOW\n`;
+      lessonPlan.sections.forEach(s => {
+        t += `\n${s.title} (${s.duration})\n${s.activity}\n`;
+        if (s.oh_connection) t += `  → One Health Connection: ${s.oh_connection}\n`;
+      });
+      t += "\n";
+    }
+    if (lessonPlan.assessment) { t += `ASSESSMENT\n${lessonPlan.assessment}\n\n`; }
+    if (lessonPlan.extensions?.length) { t += `EXTENSIONS\n${lessonPlan.extensions.map(e => `• ${e}`).join("\n")}\n\n`; }
+    if (lessonPlan.teacher_notes) { t += `TEACHER NOTES\n${lessonPlan.teacher_notes}\n\n`; }
+    t += `---\nGenerated by The One Health Lens Tool · onehealthcommission.org`;
+    return t;
+  };
 
-  const totalSteps = 1 + dims.length; // setup + dims + results
-  const stepLabels = ["Setup", ...dims.map((d) => d.title.split(" ")[0]), "Results"];
+  const copyLessonPlan = async () => {
+    try {
+      await navigator.clipboard.writeText(formatLessonPlanText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { alert("Couldn't copy — try selecting the text manually."); }
+  };
 
+  const printLessonPlan = () => {
+    const text = formatLessonPlanText();
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>${lessonPlan.title}</title><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.6;color:#333;white-space:pre-wrap;font-size:14px;}@media print{body{margin:0;padding:20px;}}</style></head><body>${text.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</body></html>`);
+    w.document.close();
+    w.print();
+  };
+
+  /* ═══════════════════════════════════
+     RENDER
+     ═══════════════════════════════════ */
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", fontFamily: "'Source Sans 3', 'Segoe UI', sans-serif", minHeight: "100vh", background: "#FAFFFE" }}>
       <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
       {/* HEADER */}
-      <div style={{ background: `linear-gradient(145deg, #0F2A1D, ${subjColor || "#1B4332"}, ${subjColor || "#2D6A4F"}88)`, padding: "24px 26px 20px", color: "white", position: "relative", overflow: "hidden" }}>
+      <div style={{ background: `linear-gradient(145deg, #0F2A1D, ${accentColor}, ${accentColor}88)`, padding: "24px 26px 20px", color: "white", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -25, right: -15, fontSize: 110, opacity: 0.06, transform: "rotate(12deg)" }}>🔎</div>
-        {!showWelcome && <button onClick={() => { reset(); }} style={{ position: "absolute", top: 14, right: 16, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, color: "white", padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", fontWeight: 600, zIndex: 2 }}>? Help</button>}
+        {!showWelcome && <button onClick={reset} style={{ position: "absolute", top: 14, right: 16, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, color: "white", padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", fontWeight: 600, zIndex: 2 }}>🔄 Start Over</button>}
         <div style={{ position: "relative" }}>
           <h1 style={{ fontFamily: "'Libre Baskerville', Georgia, serif", fontSize: 21, fontWeight: 700, margin: 0 }}>The One Health Lens</h1>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>K-12 Educator Tool · All Subjects · Track 2: Enhancing What You Already Teach</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>K-12 Educator Tool · Any Subject · Enhancing What You Already Teach</div>
           <p style={{ fontSize: 12, opacity: 0.75, margin: "8px 0 0", lineHeight: 1.5, maxWidth: 540 }}>
-            Discover One Health connections in your existing lessons — whether you teach health, science, math, ELA, social studies, STEM, or art. Based on Dr. Laura Kahn's multi-dimensional matrix.
+            Discover One Health connections in your existing lessons — no matter what subject you teach. Based on the One Health Framework for K-12 School Health Systems (LeBoeuf, et al.) and Dr. Laura Kahn's multi-dimensional matrix.
           </p>
         </div>
       </div>
 
-      {/* STEP DOTS */}
-      {!showWelcome && <div style={{ display: "flex", gap: 4, justifyContent: "center", padding: "14px 20px 0" }}>
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <div key={i} onClick={() => i <= step ? setStep(i) : null} style={{ width: i === step ? 24 : 9, height: 9, borderRadius: 5, background: i <= step ? subjColor : "#DDE5DB", transition: "all 0.3s", cursor: i <= step ? "pointer" : "default" }} />
-        ))}
-      </div>}
-
       {/* CONTENT */}
       <div ref={ref} style={{ padding: "18px 22px 110px" }}>
 
-        {/* WELCOME / GUIDE */}
+        {/* ═══ WELCOME SCREEN ═══ */}
         {showWelcome && (
           <div>
             <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 22, color: "#1B3A2A", marginBottom: 6 }}>Welcome!</h2>
@@ -789,10 +467,10 @@ Return ONLY valid JSON with no markdown or backticks:
             <div style={{ background: "#F0F7F2", border: "1.5px solid #B7E4C7", borderRadius: 12, padding: "16px 18px", marginBottom: 18 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "#2D6A4F", marginBottom: 8 }}>Why This Matters for Your Students</h3>
               <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
-                Your students face health challenges that cross every boundary — climate change, emerging diseases, food safety, mental health, environmental justice. But most students only encounter health education in a single class, if they get one at all. That means the connections between health and the rest of their world go unspoken for most of the school day.
+                Students face complex 21st-century health challenges at an alarming rate, with some of the most pressing being health impacts related to climate change, emerging and vector-borne diseases, antimicrobial resistance, food safety and security, mental health, and environmental justice. But most students only encounter health education in a single class, if they get one at all. That means the connections between health and the rest of their world go unspoken for most of the school day.
               </p>
               <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
-                You might not think what you're teaching relates to health — but it could. When a math student calculates disease outbreak rates, they're building health literacy. When an art student illustrates how pollution moves through a food web, they're seeing systems. When a social studies student traces how policy decisions shape health outcomes for people <em>and</em> animals, they're thinking like a One Health professional.
+                You might not think what you're teaching relates to health — but it could. When a math student calculates disease outbreak rates, they're building health literacy. When an art student illustrates how pollution moves through a food web, they're seeing systems. When a social studies student traces how policy decisions shape health outcomes for people <em>and</em> animals, they're making real-world connections to the content they're learning while gaining a more comprehensive understanding of health.
               </p>
               <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, margin: "0 0 10px" }}>
                 The One Health Lens helps you find these opportunities in content you're already teaching — so your students build health literacy <strong>across the school day</strong>, not just in a single class. Every teacher who uses this tool gives their students one more chance to see how health connects to the world around them.
@@ -809,12 +487,10 @@ Return ONLY valid JSON with no markdown or backticks:
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "#2D6A4F", marginBottom: 10 }}>How It Works</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
-                  { num: "1", text: "Pick your subject area, grade level, and a topic you're already teaching." },
-                  { num: "2", text: "Click \"Generate Connections\" — the tool uses AI to analyze your topic and suggest One Health connections for each dimension, matched to your grade level." },
-                  { num: "3", text: "Review the suggestions. Tap each card to see the AI-generated connection alongside guiding questions. Edit, refine, or replace any suggestion with your own thinking — your expertise makes them better." },
-                  { num: "4", text: "View your Lesson Map showing all the One Health connections, plus tips for turning them into teaching moments your students will remember." },
-                  { num: "5", text: "Click \"Find Teaching Resources\" to get AI-curated books, data sources, case studies, lesson materials, and videos — all matched to your topic and grade level." },
-                  { num: "6", text: "Click \"Generate a Lesson Plan\" to get a complete, ready-to-teach plan that integrates One Health framed Health Education into your existing content — with your curated resources woven in." },
+                  { num: "1", text: "Enter your subject, grade level, and a topic you're already teaching." },
+                  { num: "2", text: "Click \"Generate Connections\" — AI analyzes your topic and shows how it connects to human, animal, plant, environmental, and ecosystem health." },
+                  { num: "3", text: "Review the connections. Add your own notes or ideas to guide what comes next." },
+                  { num: "4", text: "From there, you can do either or both: \"Find Teaching Resources\" for AI-curated books, data sources, case studies, and videos — or \"Generate a Lesson Plan\" for a complete, ready-to-teach plan that integrates One Health framed Health Education into your existing content." },
                 ].map((s) => (
                   <div key={s.num} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                     <span style={{ background: "#2D6A4F", color: "white", width: 24, height: 24, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{s.num}</span>
@@ -826,22 +502,19 @@ Return ONLY valid JSON with no markdown or backticks:
 
             <div style={{ background: "#FFFBEB", border: "1.5px solid #FDE68A", borderRadius: 12, padding: "14px 16px", marginBottom: 18 }}>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: "#78350F", marginBottom: 6 }}>What You'll Need</h3>
-              <p style={{ fontSize: 13, color: "#78350F", lineHeight: 1.5, margin: 0 }}>Just a topic or lesson you're currently teaching. That's it! The tool provides all the guiding questions. Your lesson's standards don't change — you're helping to deepen their learning and connect it to the real world through a One Health lens.</p>
+              <p style={{ fontSize: 13, color: "#78350F", lineHeight: 1.5, margin: 0 }}>Just a topic or lesson you're currently teaching. That's it! Your lesson's standards don't change — you're helping to deepen their learning and connect it to the real world through a One Health lens.</p>
             </div>
 
             <div style={{ background: "#F0F4FF", border: "1.5px solid #C7D2FE", borderRadius: 12, padding: "14px 16px", marginBottom: 18 }}>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1E40AF", marginBottom: 6 }}>Want to See an Example First?</h3>
-              <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.5, marginBottom: 10 }}>Each subject has a pre-filled sample walkthrough so you can see what a completed analysis looks like before starting your own.</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                {Object.entries(SAMPLES).map(([k, v]) => {
-                  const s = SUBJECTS.find((x) => x.id === k);
-                  return (
-                    <button key={k} onClick={() => loadSample(k)} style={{ padding: "8px 8px", fontSize: 11, border: "2px dashed #B7E4C7", borderRadius: 8, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", textAlign: "left", lineHeight: 1.3 }}>
-                      <span style={{ fontSize: 14 }}>{s?.emoji}</span> <strong>{v.topic}</strong>
-                      <div style={{ fontSize: 9, color: "#6B7C74", marginTop: 1 }}>{s?.label}</div>
-                    </button>
-                  );
-                })}
+              <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.5, marginBottom: 10 }}>See what a completed analysis looks like before starting your own:</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {Object.entries(SAMPLES).map(([k, v]) => (
+                  <button key={k} onClick={() => loadSample(k)} style={{ padding: "10px 14px", fontSize: 13, border: "2px dashed #B7E4C7", borderRadius: 8, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", textAlign: "left", lineHeight: 1.3 }}>
+                    <strong>{v.topic}</strong>
+                    <span style={{ fontSize: 11, color: "#6B7C74", marginLeft: 8 }}>{v.subject} · Grades {GRADES.find((g) => g.id === v.grade)?.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -851,408 +524,354 @@ Return ONLY valid JSON with no markdown or backticks:
           </div>
         )}
 
-        {/* STEP 0: SETUP */}
+        {/* ═══ SETUP ═══ */}
         {!showWelcome && step === 0 && !loading && (
           <div>
-            <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 22, color: "#1B3A2A", marginBottom: 6 }}>Choose Your Subject & Topic</h2>
-            <div style={{ background: "#F0F7F2", border: "1.5px solid #B7E4C7", borderRadius: 12, padding: "14px 16px", marginBottom: 20, fontSize: 12, color: "#3D5A4C", lineHeight: 1.5 }}>
-              <strong style={{ color: "#2D6A4F" }}>Track 2:</strong> This tool helps you find One Health connections in topics you're <em>already teaching</em>. Select your subject area and the tool will provide guided questions designed for your discipline.
+            <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 22, color: "#1B3A2A", marginBottom: 14 }}>What Are You Teaching?</h2>
+
+            {/* Subject */}
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Subject</label>
+            <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Type your subject — e.g., Biology, Algebra, World History, Band, PE..." style={{ width: "100%", padding: "12px 14px", fontSize: 14, border: "2px solid #C6DBC8", borderRadius: 10, outline: "none", fontFamily: "'Source Sans 3', sans-serif", background: "#FAFFFE", boxSizing: "border-box", marginBottom: 8 }} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+              {QUICK_SUBJECTS.map((s) => (
+                <button key={s.label} onClick={() => setSubject(s.label)} style={{ padding: "5px 12px", fontSize: 12, border: subject === s.label ? `2px solid ${s.color}` : "1.5px solid #DDE5DB", borderRadius: 16, background: subject === s.label ? `${s.color}10` : "white", color: subject === s.label ? s.color : "#555", cursor: "pointer", fontWeight: subject === s.label ? 700 : 400, fontFamily: "'Source Sans 3', sans-serif" }}>
+                  {s.emoji} {s.label}
+                </button>
+              ))}
             </div>
 
-            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Subject Area</label>
-            <SubjectPicker selected={subj} onSelect={changeSubj} />
-
+            {/* Topic */}
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Topic You're Teaching</label>
-            <input type="text" value={topic} onChange={(e) => changeTopic(e.target.value)} placeholder='e.g., "Water Quality" or "Ratios & Proportions"' style={{ width: "100%", padding: "12px 14px", fontSize: 14, border: "2px solid #C6DBC8", borderRadius: 10, outline: "none", fontFamily: "'Source Sans 3', sans-serif", background: "#FAFFFE", boxSizing: "border-box", marginBottom: 12 }} />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-              {TOPICS.map((t) => <button key={t} onClick={() => changeTopic(t)} style={{ padding: "4px 11px", fontSize: 11, border: topic === t ? "2px solid #2D6A4F" : "1px solid #DDE5DB", borderRadius: 16, background: topic === t ? "#D8F3DC" : "white", color: "#2D6A4F", cursor: "pointer", fontWeight: topic === t ? 700 : 400 }}>{t}</button>)}
+            <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder='e.g., "Fractions", "The Water Cycle", "Civil Rights Movement"' style={{ width: "100%", padding: "12px 14px", fontSize: 14, border: "2px solid #C6DBC8", borderRadius: 10, outline: "none", fontFamily: "'Source Sans 3', sans-serif", background: "#FAFFFE", boxSizing: "border-box", marginBottom: 8 }} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+              {TOPIC_SUGGESTIONS.map((t) => <button key={t} onClick={() => setTopic(t)} style={{ padding: "4px 11px", fontSize: 11, border: topic === t ? "2px solid #2D6A4F" : "1px solid #DDE5DB", borderRadius: 16, background: topic === t ? "#D8F3DC" : "white", color: "#2D6A4F", cursor: "pointer", fontWeight: topic === t ? 700 : 400 }}>{t}</button>)}
             </div>
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase" }}>Grade Band</label>
-                <div style={{ display: "flex", gap: 5 }}>
-                  {GRADES.map((g) => <button key={g.id} onClick={() => setGrade(g.id)} style={{ flex: 1, padding: "8px 4px", fontSize: 12, fontWeight: grade === g.id ? 700 : 500, border: grade === g.id ? `2px solid ${g.color}` : "1.5px solid #DDE5DB", borderRadius: 7, background: grade === g.id ? `${g.color}10` : "white", color: grade === g.id ? g.color : "#888", cursor: "pointer" }}>{g.label}</button>)}
-                </div>
-              </div>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase" }}>Course/Class Name (optional)</label>
-                <input type="text" value={subjArea} onChange={(e) => setSubjArea(e.target.value)} placeholder="e.g., 7th Grade Life Science" style={{ width: "100%", padding: "8px 12px", fontSize: 12, border: "1.5px solid #C6DBC8", borderRadius: 7, outline: "none", fontFamily: "'Source Sans 3', sans-serif", background: "#FAFFFE", boxSizing: "border-box" }} />
-              </div>
+            {/* Grade */}
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#2D6A4F", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Grade Band</label>
+            <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
+              {GRADES.map((g) => <button key={g.id} onClick={() => setGrade(g.id)} style={{ flex: 1, padding: "10px 4px", fontSize: 13, fontWeight: grade === g.id ? 700 : 500, border: grade === g.id ? `2.5px solid ${g.color}` : "1.5px solid #DDE5DB", borderRadius: 8, background: grade === g.id ? `${g.color}10` : "white", color: grade === g.id ? g.color : "#888", cursor: "pointer" }}>{g.label}</button>)}
             </div>
 
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#6B7C74", marginBottom: 8 }}>Or load a sample walkthrough:</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {Object.entries(SAMPLES).map(([k, v]) => {
-                const s = SUBJECTS.find((x) => x.id === k);
-                return (
-                  <button key={k} onClick={() => loadSample(k)} style={{ padding: "10px 12px", fontSize: 12, border: "2px dashed #B7E4C7", borderRadius: 10, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", textAlign: "left", lineHeight: 1.3 }}>
-                    <span style={{ fontSize: 16, marginRight: 4 }}>{s?.emoji}</span>
+            {/* Generate Button */}
+            <button onClick={generateConnections} disabled={!canGenerate} style={{ width: "100%", padding: "15px", fontSize: 15, fontWeight: 700, border: "none", borderRadius: 10, background: canGenerate ? "linear-gradient(135deg, #1B4332, #2D6A4F)" : "#DDD", color: canGenerate ? "white" : "#999", cursor: canGenerate ? "pointer" : "not-allowed", fontFamily: "'Source Sans 3', sans-serif", marginBottom: 20 }}>
+              🔎 Generate One Health Connections
+            </button>
+
+            {aiError && (
+              <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F", lineHeight: 1.5 }}>
+                {aiError}
+                <button onClick={generateConnections} style={{ marginLeft: 8, padding: "4px 12px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
+              </div>
+            )}
+
+            {/* Samples */}
+            <div style={{ borderTop: "1px solid #E5EDE8", paddingTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#6B7C74", marginBottom: 8 }}>Or explore a sample walkthrough:</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {Object.entries(SAMPLES).map(([k, v]) => (
+                  <button key={k} onClick={() => loadSample(k)} style={{ padding: "10px 14px", fontSize: 12, border: "2px dashed #B7E4C7", borderRadius: 8, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", textAlign: "left", lineHeight: 1.3 }}>
                     <strong>{v.topic}</strong>
-                    <div style={{ fontSize: 10, color: "#6B7C74", marginTop: 2 }}>{s?.label} · Gr. {GRADES.find((g) => g.id === v.grade)?.label}</div>
+                    <span style={{ fontSize: 11, color: "#6B7C74", marginLeft: 8 }}>{v.subject} · Gr. {GRADES.find((g) => g.id === v.grade)?.label}</span>
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* LOADING */}
+        {/* ═══ LOADING ═══ */}
         {loading && (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
             <div style={{ fontSize: 48, marginBottom: 16, animation: "pulse 1.5s ease-in-out infinite" }}>🔎</div>
             <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 20, color: "#1B3A2A", marginBottom: 8 }}>Finding One Health Connections...</h2>
             <p style={{ fontSize: 14, color: "#4A6B5A", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
-              Analyzing how <strong>"{topic}"</strong> connects to human, animal, plant, environment, and ecosystem health for <strong>{gradeLabel}</strong> students.
+              Exploring how <strong>"{topic}"</strong> connects to human, animal, plant, environmental, and ecosystem health for <strong>{gradeLabel}</strong> students.
             </p>
             <p style={{ fontSize: 12, color: "#8A9B90", marginTop: 12 }}>This usually takes 10–15 seconds.</p>
             <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }`}</style>
           </div>
         )}
 
-        {/* DIMENSION STEPS */}
-        {!loading && step >= 1 && step <= dims.length && (() => {
-          const dim = dims[step - 1];
-          return (
-            <div key={dim.id}>
-              <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 21, color: "#1B3A2A", marginBottom: 4 }}>{dim.icon} {dim.title}</h2>
-              <p style={{ fontSize: 13, color: "#4A6B5A", marginBottom: 10, lineHeight: 1.5 }}>
-                Explore how <strong>"{topic}"</strong> connects through this lens. Expand each card for grade-appropriate prompts ({gradeLabel}).
-              </p>
-              {aiError && <div style={{ fontSize: 11, color: "#B45309", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.4 }}>{aiError}</div>}
-              <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, lineHeight: 1.45 }}>
-                <strong>Tip:</strong> AI-generated suggestions have been filled in below. Tap any card to review, edit, or replace the suggestions with your own thinking. These are starting points — your expertise makes them better.
+        {/* ═══ RESULTS ═══ */}
+        {step === 1 && connections && !loading && (
+          <div>
+            {/* Header */}
+            <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 21, color: "#1B3A2A", marginBottom: 4 }}>
+              Exploring One Health Connections in "{topic}"
+            </h2>
+            <p style={{ fontSize: 13, color: "#4A6B5A", lineHeight: 1.55, marginBottom: 16 }}>
+              One Health recognizes that the health of people, animals, plants, environments, and ecosystems are all connected and interdependent. Here's how <strong>{topic}</strong> connects — and how you can bring these ideas into your <strong>{subject}</strong> classroom ({gradeLabel}).
+            </p>
+
+            {/* Stats */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+              <div style={{ background: "linear-gradient(135deg, #D8F3DC, #B7E4C7)", borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 100 }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#1B4332" }}>{totalBullets}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase" }}>Connections Found</div>
               </div>
-              {dim.items.map((item) => (
-                <Card key={item.id} item={item} grade={grade} value={dimData[dim.id]?.[item.id] || ""} onChange={(iid, val) => updateDim(dim.id, iid, val)} accent={subjColor} />
-              ))}
+              <div style={{ background: "#F0F4FF", borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 100 }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#1E40AF" }}>{filledDomains.length}/5</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase" }}>OH Domains</div>
+              </div>
+              <div style={{ background: "#F5F0FF", borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 100 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#7C3AED" }}>{gradeLabel}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Grade Band</div>
+              </div>
             </div>
-          );
-        })()}
 
-        {/* RESULTS */}
-        {step === dims.length + 1 && (() => {
-          let sLabel = "Emerging", sColor = "#D97706";
-          if (filledCount >= 10) { sLabel = "Rich"; sColor = "#059669"; }
-          else if (filledCount >= 6) { sLabel = "Strong"; sColor = "#2563EB"; }
-          else if (filledCount >= 3) { sLabel = "Growing"; sColor = "#7C3AED"; }
-
-          return (
-            <div>
-              <h2 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 22, color: "#1B3A2A", marginBottom: 6 }}>🗺️ Your One Health Lesson Map</h2>
-              <p style={{ fontSize: 13, color: "#4A6B5A", marginBottom: 16, lineHeight: 1.5 }}>OH connections for <strong>"{topic}"</strong> via the <strong>{SUBJECTS.find((s) => s.id === subj)?.label}</strong> lens.</p>
-
-              <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
-                <div style={{ background: `linear-gradient(135deg, #D8F3DC, #B7E4C7)`, borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 100 }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: "#1B4332" }}>{filledCount}/{totalSlots}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase" }}>Connections</div>
-                </div>
-                <div style={{ background: `${sColor}10`, border: `1.5px solid ${sColor}30`, borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 100 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: sColor }}>{sLabel}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Integration</div>
-                </div>
-                <div style={{ background: "#F0F4FF", borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 100 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1E40AF" }}>{gradeLabel}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Grade Band</div>
-                  {subjArea && <div style={{ fontSize: 11, color: "#3B82F6" }}>{subjArea}</div>}
-                </div>
-              </div>
-
-              {dims.map((dim) => {
-                const dd = dimData[dim.id] || {};
-                const filled = dim.items.filter((it) => dd[it.id]?.trim());
-                if (!filled.length) return null;
-                return (
-                  <div key={dim.id} style={{ marginBottom: 16 }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1B4332", paddingBottom: 4, borderBottom: "2px solid #D8F3DC", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 6 }}>{dim.icon} {dim.title}</h3>
-                    {filled.map((item) => (
-                      <div key={item.id} style={{ display: "flex", gap: 8, marginBottom: 5, padding: "8px 10px", background: "#FAFFFE", borderRadius: 8, border: "1px solid #E5EDE8" }}>
-                        <span style={{ fontSize: 16, flexShrink: 0 }}>{item.emoji}</span>
-                        <div><div style={{ fontWeight: 700, fontSize: 12, color: "#2D6A4F" }}>{item.label}</div><div style={{ fontSize: 12, color: "#3D4F46", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{dd[item.id]}</div></div>
+            {/* Connection Domains */}
+            {OH_DOMAINS.map((domain) => {
+              const items = connections[domain.id];
+              if (!items?.length) return null;
+              return (
+                <div key={domain.id} style={{ marginBottom: 16, border: `1.5px solid ${domain.color}25`, borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: `${domain.color}10`, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 20 }}>{domain.emoji}</span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: domain.color }}>{domain.label}</div>
+                      <div style={{ fontSize: 11, color: "#6B7C74" }}>{domain.desc}</div>
+                    </div>
+                  </div>
+                  <div style={{ padding: "12px 14px" }}>
+                    {items.map((item, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < items.length - 1 ? 10 : 0, padding: "8px 10px", background: "#FAFFFE", borderRadius: 8, border: "1px solid #F0F5F2" }}>
+                        <span style={{ color: domain.color, fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 1 }}>•</span>
+                        <span style={{ fontSize: 13, color: "#3D4F46", lineHeight: 1.55 }}>{item}</span>
                       </div>
                     ))}
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
 
-              <div style={{ padding: "14px 16px", background: "#F0F4FF", border: "1.5px solid #C7D2FE", borderRadius: 10, marginBottom: 16 }}>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1E40AF", marginBottom: 6 }}>📋 About Your Lesson Standards</h3>
-                <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>
-                  Your original lesson standards remain fully addressed — the One Health Lens doesn't change what you teach, it helps your students <strong>make cross-curricular connections to health</strong> within the content they're already learning. When students see how health connects to math, art, social studies, science, ELA, or STEM, they build health literacy across the school day — reinforcing and extending what students learn in health class into every part of their education.
-                </p>
+            {/* Empty domains note */}
+            {filledDomains.length < 5 && filledDomains.length > 0 && (
+              <div style={{ fontSize: 12, color: "#6B7C74", fontStyle: "italic", marginBottom: 16, padding: "8px 12px", background: "#F8FAF9", borderRadius: 8 }}>
+                {5 - filledDomains.length} domain{5 - filledDomains.length > 1 ? "s" : ""} had no strong connection to this topic — that's normal! Not every topic connects equally to all five domains.
               </div>
+            )}
 
-              <div style={{ padding: 18, background: `linear-gradient(135deg, #1B4332, ${subjColor})`, borderRadius: 12, color: "white", marginBottom: 14 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, fontFamily: "'Libre Baskerville', serif" }}>💡 Turning Connections into Teaching Moments</h3>
-                <div style={{ fontSize: 12, lineHeight: 1.65, opacity: 0.95 }}>
-                  {subj === "math" ? <>
-                    <p style={{margin:"0 0 6px"}}><strong>1.</strong> Start with real data — CDC reports, EPA monitoring, or veterinary surveillance.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>2.</strong> Have students calculate THEN interpret: "What does this attack rate tell us about the source?"</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Compare across OH sectors: human case data alongside animal data alongside environmental data.</p>
-                    <p style={{margin:0}}><strong>4.</strong> Name it: "You just did epidemiology. Scientists call this systems approach <em>One Health</em>."</p>
-                  </> : subj === "ela" ? <>
-                    <p style={{margin:"0 0 6px"}}><strong>1.</strong> Start with a compelling narrative — a patient story, a vet's observation, a community's fight for clean water.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>2.</strong> Have students read across disciplines — compare a CDC report, a news article, and a personal account.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Write for different audiences: same topic, different stakeholders, different genres.</p>
-                    <p style={{margin:0}}><strong>4.</strong> Name it: "When we look at how human, animal, and environmental stories intersect, that's <em>One Health</em>."</p>
-                  </> : subj === "ss" ? <>
-                    <p style={{margin:"0 0 6px"}}><strong>1.</strong> Start with a map — overlay health, environmental, and socioeconomic data. What patterns emerge?</p>
-                    <p style={{margin:"0 0 6px"}}><strong>2.</strong> Trace a policy upstream: How does a zoning decision affect ecosystems, which affect animal populations, which affect human health?</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Center equity: Who bears the burden? Whose voices are missing from the policy table?</p>
-                    <p style={{margin:0}}><strong>4.</strong> Name it: "When we analyze how human, animal, and environmental systems connect, that's <em>One Health</em>."</p>
-                  </> : subj === "stem" ? <>
-                    <p style={{margin:"0 0 6px"}}><strong>1.</strong> Start with a real problem that no single discipline can solve alone — it NEEDS human, animal, and environmental perspectives.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>2.</strong> Have students define constraints from ALL sectors: human safety, animal welfare, environmental impact, cost.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Test and iterate: Does the solution work for people but harm wildlife? Back to the drawing board.</p>
-                    <p style={{margin:0}}><strong>4.</strong> Name it: "Engineers who design for human, animal, AND environmental health are using <em>One Health</em> thinking."</p>
-                  </> : subj === "art" ? <>
-                    <p style={{margin:"0 0 6px"}}><strong>1.</strong> Start with observation — slow, careful looking at the natural connections around us.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>2.</strong> Shift perspectives: Create from the viewpoint of an animal, a river, a farmer, a microbe.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Design for audience: Who needs to understand this OH connection? Create art that reaches them.</p>
-                    <p style={{margin:0}}><strong>4.</strong> Name it: "Artists who make the invisible connections between human, animal, and environmental health visible are practicing <em>One Health</em>."</p>
-                  </> : <>
-                    <p style={{margin:"0 0 6px"}}><strong>1.</strong> Open with two seemingly unrelated connections. Challenge students: "What do these have to do with each other?"</p>
-                    <p style={{margin:"0 0 6px"}}><strong>2.</strong> Pick one OH Factor + one Complexity Level as your core frame. Use others to deepen.</p>
-                    <p style={{margin:"0 0 6px"}}><strong>3.</strong> Make it local using your Political, Social &amp; Economic notes. What policies or realities make this relevant to your students?</p>
-                    <p style={{margin:0}}><strong>4.</strong> Name it: "You just analyzed a topic the way scientists and policymakers do — that's <em>One Health</em>."</p>
-                  </>}
-                </div>
-              </div>
-
-              {/* RESOURCES */}
-              {!resources && !loadingRes && (
-                <button onClick={generateResources} style={{ width: "100%", padding: "14px", fontSize: 14, fontWeight: 700, border: "2px dashed #B7E4C7", borderRadius: 10, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", marginBottom: 14 }}>
-                  📚 Find Teaching Resources for This Lesson
-                </button>
-              )}
-
-              {loadingRes && (
-                <div style={{ textAlign: "center", padding: "20px", background: "#F0FFF4", borderRadius: 10, border: "1.5px solid #B7E4C7", marginBottom: 14 }}>
-                  <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}>📚</div>
-                  <p style={{ fontSize: 13, color: "#2D6A4F", fontWeight: 600, margin: 0 }}>Searching for teaching resources...</p>
-                  <p style={{ fontSize: 11, color: "#6B7C74", margin: "4px 0 0" }}>Finding books, data sources, case studies, and lesson materials for "{topic}"</p>
-                </div>
-              )}
-
-              {resources && !resources.error && (
-                <div style={{ marginBottom: 14 }}>
-                  <h3 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 16, color: "#1B3A2A", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>📚 Teaching Resources
-                    <button onClick={() => { setResources(null); setLessonPlan(null); generateResources(); }} style={{ fontSize: 10, padding: "4px 10px", border: "1px solid #B7E4C7", borderRadius: 6, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif" }}>🔄 Regenerate</button>
-                  </h3>
-                  <p style={{ fontSize: 12, color: "#6B7C74", marginBottom: 14, lineHeight: 1.5 }}>AI-curated resources for teaching One Health connections in "{topic}" ({gradeLabel}). Always verify links and preview materials before classroom use.</p>
-
-                  {resources.books?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>📖 Books &amp; Literature</h4>
-                      {resources.books.map((b, i) => (
-                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{b.title}</div>
-                          {b.author && <div style={{ fontSize: 11, color: "#6B7C74" }}>by {b.author} · {b.type}</div>}
-                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{b.description}</div>
-                          {b.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{b.grades}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {resources.data_sources?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>📊 Data Sources</h4>
-                      {resources.data_sources.map((r, i) => (
-                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
-                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
-                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {resources.case_studies?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>🔬 Case Studies</h4>
-                      {resources.case_studies.map((r, i) => (
-                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
-                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
-                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {resources.lesson_materials?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>🎓 Lesson Materials</h4>
-                      {resources.lesson_materials.map((r, i) => (
-                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
-                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
-                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {resources.multimedia?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>🎬 Videos &amp; Multimedia</h4>
-                      {resources.multimedia.map((r, i) => (
-                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>
-                          {r.type && <span style={{ fontSize: 10, color: "#6B7C74", fontStyle: "italic" }}>{r.type}</span>}
-                          <div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div>
-                          {r.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{r.grades}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {resources?.error && (
-                <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F" }}>
-                  {resources.error}
-                  <button onClick={generateResources} style={{ marginLeft: 8, padding: "3px 10px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
-                </div>
-              )}
-
-              {/* LESSON PLAN */}
-              {resources && !resources.error && !lessonPlan && !loadingLP && (<>
-                <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.45 }}>
-                  <strong>💡 Want to fine-tune?</strong> Use the <strong>← Back</strong> button to revisit and edit your connections. The resources and lesson plan are built from what you entered — so refining your connections will improve everything that follows.
-                </div>
-                <button onClick={generateLessonPlan} style={{ width: "100%", padding: "14px", fontSize: 14, fontWeight: 700, border: "none", borderRadius: 10, background: "linear-gradient(135deg, #1B4332, #2D6A4F)", color: "white", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif", marginBottom: 14 }}>
-                  📝 Generate a Lesson Plan with One Health Connections
-                </button>
-              </>)}
-
-              {loadingLP && (
-                <div style={{ textAlign: "center", padding: "20px", background: "#F0F7F2", borderRadius: 10, border: "1.5px solid #B7E4C7", marginBottom: 14 }}>
-                  <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}>📝</div>
-                  <p style={{ fontSize: 13, color: "#2D6A4F", fontWeight: 600, margin: 0 }}>Building your lesson plan...</p>
-                  <p style={{ fontSize: 11, color: "#6B7C74", margin: "4px 0 0" }}>Integrating One Health connections and your curated resources into a ready-to-teach plan</p>
-                </div>
-              )}
-
-              {lessonPlan && !lessonPlan.error && (
-                <div style={{ marginBottom: 14, border: "2px solid #2D6A4F", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ background: "linear-gradient(135deg, #1B4332, #2D6A4F)", padding: "16px 18px", color: "white" }}>
-                    <h3 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 17, margin: "0 0 4px" }}>📝 {lessonPlan.title}</h3>
-                    <div style={{ fontSize: 12, opacity: 0.8 }}>{lessonPlan.subject} · {lessonPlan.grade_band} · {lessonPlan.duration}</div>
-                  </div>
-                  <div style={{ padding: "16px 18px" }}>
-                    <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, marginBottom: 14 }}>{lessonPlan.overview}</p>
-
-                    {lessonPlan.objectives?.length > 0 && (
-                      <div style={{ marginBottom: 14 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#1E40AF", textTransform: "uppercase", marginBottom: 6 }}>Content Objectives</h4>
-                        {lessonPlan.objectives.map((o, i) => (
-                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "3px 0 3px 14px", borderLeft: "3px solid #C7D2FE" }}>{o}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {lessonPlan.oh_objectives?.length > 0 && (
-                      <div style={{ marginBottom: 14 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", marginBottom: 6 }}>🌍 One Health Objectives</h4>
-                        {lessonPlan.oh_objectives.map((o, i) => (
-                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "3px 0 3px 14px", borderLeft: "3px solid #B7E4C7" }}>{o}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {lessonPlan.materials?.length > 0 && (
-                      <div style={{ marginBottom: 14 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Materials Needed</h4>
-                        {lessonPlan.materials.map((m, i) => (
-                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "2px 0" }}>• {m}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {lessonPlan.sections?.length > 0 && (
-                      <div style={{ marginBottom: 14 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 8 }}>Lesson Flow</h4>
-                        {lessonPlan.sections.map((sec, i) => (
-                          <div key={i} style={{ marginBottom: 10, border: "1px solid #E5EDE8", borderRadius: 8, overflow: "hidden" }}>
-                            <div style={{ background: "#F8FAF9", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{sec.title}</span>
-                              <span style={{ fontSize: 11, color: "#6B7C74", fontWeight: 600 }}>{sec.duration}</span>
-                            </div>
-                            <div style={{ padding: "10px 12px" }}>
-                              <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>{sec.activity}</p>
-                              {sec.oh_connection && (
-                                <div style={{ marginTop: 8, padding: "6px 10px", background: "#F0FFF4", borderRadius: 6, borderLeft: "3px solid #2D6A4F" }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase" }}>🌍 OH Connection: </span>
-                                  <span style={{ fontSize: 11, color: "#3D5A4C", lineHeight: 1.4 }}>{sec.oh_connection}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {lessonPlan.assessment && (
-                      <div style={{ marginBottom: 14 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Assessment</h4>
-                        <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>{lessonPlan.assessment}</p>
-                      </div>
-                    )}
-
-                    {lessonPlan.extensions?.length > 0 && (
-                      <div style={{ marginBottom: 14 }}>
-                        <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Extensions</h4>
-                        {lessonPlan.extensions.map((e, i) => (
-                          <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "2px 0" }}>• {e}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {lessonPlan.teacher_notes && (
-                      <div style={{ padding: "10px 12px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8 }}>
-                        <h4 style={{ fontSize: 11, fontWeight: 700, color: "#78350F", textTransform: "uppercase", marginBottom: 4 }}>💡 Teacher Notes</h4>
-                        <p style={{ fontSize: 12, color: "#78350F", lineHeight: 1.5, margin: 0 }}>{lessonPlan.teacher_notes}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {lessonPlan && !lessonPlan.error && (
-                <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, lineHeight: 1.45, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <span><strong>💡 Not quite right?</strong> Use the <strong>← Back</strong> button to edit your One Health connections, then return here to regenerate. The more specific your connections, the more tailored your lesson plan will be.</span>
-                  <button onClick={() => { setLessonPlan(null); generateLessonPlan(); }} style={{ fontSize: 10, padding: "4px 10px", border: "1px solid #B7E4C7", borderRadius: 6, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif", flexShrink: 0 }}>🔄 Regenerate Lesson Plan</button>
-                </div>
-              )}
-
-              {lessonPlan?.error && (
-                <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F" }}>
-                  {lessonPlan.error}
-                  <button onClick={generateLessonPlan} style={{ marginLeft: 8, padding: "3px 10px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
-                </div>
-              )}
-
-              <div style={{ padding: 12, background: "#FFFBE6", borderRadius: 9, border: "1px solid #FDE68A", fontSize: 10, color: "#78350F", lineHeight: 1.4 }}>
-                <strong>Citation:</strong> Health/Science lens adapted from Kahn, L.H. (2021). "Developing a One Health Approach by Using a Multi-Dimensional Matrix." <em>One Health</em>, 13, 100289. Cross-curricular lenses (Math, ELA, Social Studies, STEM, Art) developed for K-12 educators as part of the One Health Framework for K-12 School Health Systems (LeBoeuf, et al.).
-              </div>
+            {/* Standards note */}
+            <div style={{ padding: "14px 16px", background: "#F0F4FF", border: "1.5px solid #C7D2FE", borderRadius: 10, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#1E40AF", marginBottom: 6 }}>📋 About Your Lesson Standards</h3>
+              <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>
+                Your original lesson standards remain fully addressed — the One Health Lens doesn't change what you teach, it helps your students <strong>make cross-curricular connections to health</strong> within the content they're already learning. When students see how health connects to {subject.toLowerCase()}, they build health literacy across the school day — reinforcing and extending what students learn in health class into every part of their education.
+              </p>
             </div>
-          );
-        })()}
+
+            {/* Teacher Notes */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#2D6A4F", marginBottom: 6 }}>✏️ Your Notes (optional)</label>
+              <p style={{ fontSize: 11, color: "#6B7C74", marginBottom: 6, lineHeight: 1.4 }}>
+                Add any additional context, ideas, or focus areas. These will be used when generating resources and your lesson plan.
+              </p>
+              <textarea value={teacherNotes} onChange={(e) => setTeacherNotes(e.target.value)} placeholder="e.g., I'd like to focus on the environmental connections... My students are already familiar with food webs... We have a field trip to the wetlands next month..." rows={3} style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1.5px solid #D0DDD5", borderRadius: 8, resize: "vertical", fontFamily: "'Source Sans 3', sans-serif", outline: "none", boxSizing: "border-box", lineHeight: 1.45, background: "#FAFFFE" }} onFocus={(e) => (e.target.style.borderColor = "#2D6A4F")} onBlur={(e) => (e.target.style.borderColor = "#D0DDD5")} />
+            </div>
+
+            {/* Fine-tune tip */}
+            <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, lineHeight: 1.45 }}>
+              <strong>💡 Not what you expected?</strong> Click <strong>← Back</strong> to adjust your subject, topic, or grade and regenerate. You can also add notes above to guide the AI in a specific direction.
+            </div>
+
+            {/* ─── ACTION BUTTONS ─── */}
+            {!loadingRes && !loadingLP && (
+              <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                {!resources && (
+                  <button onClick={generateResources} style={{ flex: 1, minWidth: 200, padding: "14px", fontSize: 14, fontWeight: 700, border: "2px dashed #B7E4C7", borderRadius: 10, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif" }}>
+                    📚 Find Teaching Resources
+                  </button>
+                )}
+                {!lessonPlan && (
+                  <button onClick={generateLessonPlan} style={{ flex: 1, minWidth: 200, padding: "14px", fontSize: 14, fontWeight: 700, border: "none", borderRadius: 10, background: "linear-gradient(135deg, #1B4332, #2D6A4F)", color: "white", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif" }}>
+                    📝 Generate a Lesson Plan
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ─── RESOURCES LOADING ─── */}
+            {loadingRes && (
+              <div style={{ textAlign: "center", padding: "20px", background: "#F0FFF4", borderRadius: 10, border: "1.5px solid #B7E4C7", marginBottom: 14 }}>
+                <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}>📚</div>
+                <p style={{ fontSize: 13, color: "#2D6A4F", fontWeight: 600, margin: 0 }}>Searching for teaching resources...</p>
+                <p style={{ fontSize: 11, color: "#6B7C74", margin: "4px 0 0" }}>Finding books, data sources, case studies, and lesson materials for "{topic}"</p>
+              </div>
+            )}
+
+            {resources && !resources.error && (
+              <div style={{ marginBottom: 14 }}>
+                <h3 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 16, color: "#1B3A2A", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>📚 Teaching Resources
+                  <button onClick={() => { setResources(null); setLessonPlan(null); generateResources(); }} style={{ fontSize: 10, padding: "4px 10px", border: "1px solid #B7E4C7", borderRadius: 6, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif" }}>🔄 Regenerate</button>
+                </h3>
+                <p style={{ fontSize: 12, color: "#6B7C74", marginBottom: 14, lineHeight: 1.5 }}>AI-curated resources for teaching One Health connections in "{topic}" ({gradeLabel}). Always verify links and preview materials before classroom use.</p>
+
+                {[
+                  { key: "books", title: "📖 Books & Literature", fields: (b) => <><div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{b.title}</div>{b.author && <div style={{ fontSize: 11, color: "#6B7C74" }}>by {b.author}{b.type ? ` · ${b.type}` : ""}</div>}<div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{b.description}</div></> },
+                  { key: "data_sources", title: "📊 Data Sources", fields: (r) => <><div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div><div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div></> },
+                  { key: "case_studies", title: "🔬 Case Studies", fields: (r) => <><div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div><div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div></> },
+                  { key: "lesson_materials", title: "🎓 Lesson Materials", fields: (r) => <><div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div><div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div></> },
+                  { key: "multimedia", title: "🎬 Videos & Multimedia", fields: (r) => <><div style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1E40AF", textDecoration: "none" }}>{r.title} ↗</a> : r.title}</div>{r.type && <span style={{ fontSize: 10, color: "#6B7C74", fontStyle: "italic" }}>{r.type}</span>}<div style={{ fontSize: 12, color: "#3D5A4C", lineHeight: 1.45, marginTop: 3 }}>{r.description}</div></> },
+                ].map(({ key, title, fields }) => {
+                  const items = resources[key];
+                  if (!items?.length) return null;
+                  return (
+                    <div key={key} style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, paddingBottom: 4, borderBottom: "2px solid #D8F3DC" }}>{title}</h4>
+                      {items.map((item, i) => (
+                        <div key={i} style={{ padding: "10px 12px", background: "#FAFFFE", border: "1px solid #E5EDE8", borderRadius: 8, marginBottom: 6 }}>
+                          {fields(item)}
+                          {item.grades && <span style={{ fontSize: 10, background: "#D8F3DC", color: "#2D6A4F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginTop: 4, display: "inline-block" }}>{item.grades}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {resources?.error && (
+              <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F" }}>
+                {resources.error}
+                <button onClick={generateResources} style={{ marginLeft: 8, padding: "3px 10px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
+              </div>
+            )}
+
+            {/* ─── LESSON PLAN ─── */}
+            {loadingLP && (
+              <div style={{ textAlign: "center", padding: "20px", background: "#F0F7F2", borderRadius: 10, border: "1.5px solid #B7E4C7", marginBottom: 14 }}>
+                <div style={{ fontSize: 28, marginBottom: 8, animation: "pulse 1.5s ease-in-out infinite" }}>📝</div>
+                <p style={{ fontSize: 13, color: "#2D6A4F", fontWeight: 600, margin: 0 }}>Building your lesson plan...</p>
+                <p style={{ fontSize: 11, color: "#6B7C74", margin: "4px 0 0" }}>Integrating One Health connections and curated resources into a ready-to-teach plan</p>
+              </div>
+            )}
+
+            {lessonPlan && !lessonPlan.error && (
+              <div style={{ marginBottom: 14, border: "2px solid #2D6A4F", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "linear-gradient(135deg, #1B4332, #2D6A4F)", padding: "16px 18px", color: "white" }}>
+                  <h3 style={{ fontFamily: "'Libre Baskerville', serif", fontSize: 17, margin: "0 0 4px" }}>📝 {lessonPlan.title}</h3>
+                  <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 10 }}>{lessonPlan.subject} · {lessonPlan.grade_band} · {lessonPlan.duration}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={copyLessonPlan} style={{ padding: "5px 14px", fontSize: 11, fontWeight: 700, border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, background: copied ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)", color: "white", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif" }}>
+                      {copied ? "✓ Copied!" : "📋 Copy Text"}
+                    </button>
+                    <button onClick={printLessonPlan} style={{ padding: "5px 14px", fontSize: 11, fontWeight: 700, border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, background: "rgba(255,255,255,0.1)", color: "white", cursor: "pointer", fontFamily: "'Source Sans 3', sans-serif" }}>
+                      🖨️ Print / Save PDF
+                    </button>
+                  </div>
+                </div>
+                <div style={{ padding: "16px 18px" }}>
+                  <p style={{ fontSize: 13, color: "#3D5A4C", lineHeight: 1.6, marginBottom: 14 }}>{lessonPlan.overview}</p>
+
+                  {lessonPlan.objectives?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#1E40AF", textTransform: "uppercase", marginBottom: 6 }}>Content Objectives</h4>
+                      {lessonPlan.objectives.map((o, i) => (
+                        <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "3px 0 3px 14px", borderLeft: "3px solid #C7D2FE" }}>{o}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {lessonPlan.oh_objectives?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase", marginBottom: 6 }}>🌍 One Health Objectives</h4>
+                      {lessonPlan.oh_objectives.map((o, i) => (
+                        <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "3px 0 3px 14px", borderLeft: "3px solid #B7E4C7" }}>{o}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {lessonPlan.materials?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Materials Needed</h4>
+                      {lessonPlan.materials.map((m, i) => (
+                        <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "2px 0" }}>• {m}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {lessonPlan.sections?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 8 }}>Lesson Flow</h4>
+                      {lessonPlan.sections.map((sec, i) => (
+                        <div key={i} style={{ marginBottom: 10, border: "1px solid #E5EDE8", borderRadius: 8, overflow: "hidden" }}>
+                          <div style={{ background: "#F8FAF9", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: "#1B3A2A" }}>{sec.title}</span>
+                            <span style={{ fontSize: 11, color: "#6B7C74", fontWeight: 600 }}>{sec.duration}</span>
+                          </div>
+                          <div style={{ padding: "10px 12px" }}>
+                            <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>{sec.activity}</p>
+                            {sec.oh_connection && (
+                              <div style={{ marginTop: 8, padding: "6px 10px", background: "#F0FFF4", borderRadius: 6, borderLeft: "3px solid #2D6A4F" }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "#2D6A4F", textTransform: "uppercase" }}>🌍 OH Connection: </span>
+                                <span style={{ fontSize: 11, color: "#3D5A4C", lineHeight: 1.4 }}>{sec.oh_connection}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {lessonPlan.assessment && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Assessment</h4>
+                      <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.55, margin: 0 }}>{lessonPlan.assessment}</p>
+                    </div>
+                  )}
+
+                  {lessonPlan.extensions?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", marginBottom: 6 }}>Extensions</h4>
+                      {lessonPlan.extensions.map((e, i) => (
+                        <div key={i} style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, padding: "2px 0" }}>• {e}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {lessonPlan.teacher_notes && (
+                    <div style={{ padding: "10px 12px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8 }}>
+                      <h4 style={{ fontSize: 11, fontWeight: 700, color: "#78350F", textTransform: "uppercase", marginBottom: 4 }}>💡 Teacher Notes</h4>
+                      <p style={{ fontSize: 12, color: "#78350F", lineHeight: 1.5, margin: 0 }}>{lessonPlan.teacher_notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {lessonPlan && !lessonPlan.error && (
+              <div style={{ fontSize: 11, color: "#6B7C74", background: "#F8FAF9", border: "1px solid #E5EDE8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, lineHeight: 1.45, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <span><strong>💡 Not quite right?</strong> Click <strong>← Back</strong> to adjust your topic or add notes, then regenerate. The more specific your input, the more tailored your lesson plan will be.</span>
+                <button onClick={() => { setLessonPlan(null); generateLessonPlan(); }} style={{ fontSize: 10, padding: "4px 10px", border: "1px solid #B7E4C7", borderRadius: 6, background: "#F0FFF4", color: "#2D6A4F", cursor: "pointer", fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif", flexShrink: 0 }}>🔄 Regenerate Lesson Plan</button>
+              </div>
+            )}
+
+            {lessonPlan?.error && (
+              <div style={{ padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 9, marginBottom: 14, fontSize: 12, color: "#78350F" }}>
+                {lessonPlan.error}
+                <button onClick={generateLessonPlan} style={{ marginLeft: 8, padding: "3px 10px", fontSize: 11, border: "1px solid #D4842A", borderRadius: 5, background: "white", color: "#78350F", cursor: "pointer", fontWeight: 600 }}>Try Again</button>
+              </div>
+            )}
+
+            {/* Citation */}
+            <div style={{ padding: 12, background: "#FFFBE6", borderRadius: 9, border: "1px solid #FDE68A", fontSize: 10, color: "#78350F", lineHeight: 1.4 }}>
+              <strong>Citation:</strong> One Health connections framework based on the One Health Framework for K-12 School Health Systems (LeBoeuf, et al.) and adapted from Kahn, L.H. (2021). "Developing a One Health Approach by Using a Multi-Dimensional Matrix." <em>One Health</em>, 13, 100289.
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* NAV */}
-      {!showWelcome && !loading && <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #D0DDD5", padding: "9px 22px", display: "flex", justifyContent: "space-between", maxWidth: 700, margin: "0 auto", boxSizing: "border-box", zIndex: 100 }}>
-        {step > 0 ? <button onClick={() => setStep(step - 1)} style={{ padding: "8px 16px", fontSize: 12, fontWeight: 600, border: "1.5px solid #D0DDD5", borderRadius: 7, background: "white", color: "#2D6A4F", cursor: "pointer" }}>← Back</button> : <div />}
-        {step < dims.length + 1 ? (
-          <button onClick={() => { if (!canNext) return; if (step === 0) { generateConnections(); } else { setStep(step + 1); } }} disabled={!canNext} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, border: "none", borderRadius: 7, background: canNext ? `linear-gradient(135deg, #1B4332, ${subjColor})` : "#DDD", color: canNext ? "white" : "#999", cursor: canNext ? "pointer" : "not-allowed" }}>
-            {step === 0 ? "Generate Connections →" : step === dims.length ? "View Lesson Map →" : "Next →"}
-          </button>
-        ) : (
-          <button onClick={reset} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, border: "none", borderRadius: 7, background: `linear-gradient(135deg, #1B4332, ${subjColor})`, color: "white", cursor: "pointer" }}>🔄 New Analysis</button>
-        )}
-      </div>}
+      {/* ═══ NAVIGATION ═══ */}
+      {!showWelcome && !loading && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "1px solid #D0DDD5", padding: "9px 22px", display: "flex", justifyContent: "space-between", maxWidth: 700, margin: "0 auto", boxSizing: "border-box", zIndex: 100 }}>
+          {step > 0 ? (
+            <button onClick={() => { setStep(0); setConnections(null); setResources(null); setLessonPlan(null); }} style={{ padding: "8px 16px", fontSize: 12, fontWeight: 600, border: "1.5px solid #D0DDD5", borderRadius: 7, background: "white", color: "#2D6A4F", cursor: "pointer" }}>← Back</button>
+          ) : <div />}
+          {step === 1 ? (
+            <button onClick={reset} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, border: "none", borderRadius: 7, background: `linear-gradient(135deg, #1B4332, ${accentColor})`, color: "white", cursor: "pointer" }}>🔄 New Topic</button>
+          ) : <div />}
+        </div>
+      )}
     </div>
   );
 }
